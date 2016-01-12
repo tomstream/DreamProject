@@ -11,7 +11,8 @@ struct RGB{
 struct Pos{
 	float p[4];
 };
-class Light{public:
+class Light{
+public:
 	std::vector<int> light_num;
 	std::vector<RGB> intensity;
 	std::vector<Pos> pLight;
@@ -24,6 +25,13 @@ class Light{public:
 	void openLight(int index);
 	void addIntensity(int index, int channel);
 	void subIntensity(int index, int channel);
+	void setAmbient(int index, float *ambient);
+	void setDiffuse(int index, float *diffuse);
+	void setSpecular(int index, float *specular);
+	void setEmission(int index, float *emission);
+	void setSpotCutoff(int index, float cutoff);
+	void setSpotDir(int index, float *dir);
+	void setSpotExponent(int index, float exp);
 	void changeX(int index, float len);
 	void changeY(int index, float len);
 	void changeZ(int index, float len);

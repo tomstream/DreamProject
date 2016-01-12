@@ -30,12 +30,15 @@ struct Vec3f{
 	void setX(float f) { x[0] = f; }
 	void setY(float f) { x[1] = f; }
 	void setZ(float f) { x[2] = f; }
-	void normalize(){
+	void normalize(float t){
 		float sum = 0;
 		sum += sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
-		x[0] /= sum;
-		x[1] /= sum;
-		x[2] /= sum;
+		x[0] /= sum / t;
+		x[1] /= sum / t;
+		x[2] /= sum / t;
+	}
+	friend float dot(Vec3f &a, Vec3f &b){
+		return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 	}
 };
 struct Vec2f{

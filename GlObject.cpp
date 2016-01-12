@@ -10,20 +10,20 @@ glObject::glObject(){
 		s[i] = 1.0;
 	}
 	hasTex = false;
-	materialFMap[ GL_AMBIENT]= tex.ambient;
+	materialFMap[GL_AMBIENT] = tex.ambient;
 	materialFMap[GL_DIFFUSE] = tex.diffuse;
 	materialFMap[GL_SPECULAR] = tex.specular;
 	materialFMap[GL_EMISSION] = tex.emission;
 }
 
 void setConnectivity(glObject &o){
-	//遍历每一个面
+	//±é?ú????????
 	for (int i = 0; i < o.planeSize - 1; ++i){
 		for (int j = i + 1; j < o.planeSize; ++j){
-			//遍历每一个点
+			//±é?ú????????
 			for (int ki = 0; ki < 3; ++ki){
 				if (!o.planes[i].neighbor[ki])
-				for (int kj = 0; kj < 3; ++kj){
+					for (int kj = 0; kj < 3; ++kj){
 					int p1i = ki, p1j = kj;
 					int p2i = (ki + 1) % 3;
 					int p2j = (kj + 1) % 3;
@@ -60,7 +60,7 @@ void setConnectivity(glObject &o){
 						o.planes[i].neighbor[ki] = j + 1;
 						o.planes[j].neighbor[kj] = i + 1;
 					}
-				}
+					}
 			}
 		}
 	}
@@ -95,16 +95,16 @@ void drawGLObject(glObject o){
 	glShadeModel(GL_SMOOTH);
 	glPushMatrix();
 	glTranslatef(o.t[0], o.t[1], o.t[2]);
-	glScalef(o.s[0], o.s[1], o.s[2]);
 	glRotatef(o.r[2], 0, 0, 1);
 	glRotatef(o.r[1], 0, 1, 0);
 	glRotatef(o.r[0], 1, 0, 0);
+	glScalef(o.s[0], o.s[1], o.s[2]);
 	for (int i = 0; i < o.planeSize; ++i){
 		//if (o.planes[i].psize == 3)
-			glBegin(GL_TRIANGLES);
+		glBegin(GL_TRIANGLES);
 		//else
 		//	glBegin(GL_QUADS);
-		
+
 		for (int j = 0; j < 3; ++j){
 			glNormal3f(o.planes[i].normal[j].x, o.planes[i].normal[j].y, o.planes[i].normal[j].z);
 			if (o.hasTex)
@@ -117,12 +117,11 @@ void drawGLObject(glObject o){
 	glDisable(GL_TEXTURE_2D);
 	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_ADD);
 }
-
 void castShadow(glObject &o, float *lp){
 	sPoint v1, v2;
 	float side;
 	for (int i = 0; i < o.planeSize; ++i){
-		//计算光源位于平面哪一侧
+		//?????????????????????à
 		side = o.planes[i].PlaneEq.a * lp[0] +
 			o.planes[i].PlaneEq.b * lp[1] +
 			o.planes[i].PlaneEq.c * lp[2] +
@@ -225,7 +224,7 @@ void castShadow(glObject &o, float *lp){
 	glColorMask(1, 1, 1, 1);
 
 	//draw a shadowing rectangle covering the entire screen
-	
+
 	glDepthFunc(GL_LEQUAL);
 	glDepthMask(GL_TRUE);
 	glEnable(GL_LIGHTING);
@@ -293,7 +292,7 @@ int ReadObject(char *st, glObject *o){
 		fscanf(file, "%f", &(o->points[i].z));
 	}
 	//planes
-	
+
 	fscanf(file, "%d", &(o->planeSize));
 	o->planes = new sPlane[o->planeSize];
 	for (i = 0; i<o->planeSize; i++){
@@ -324,10 +323,11 @@ void addShadowObject(glObject &o, Light light){
 		GLvector4f wlp, lp;
 		glPushMatrix();
 		glLoadIdentity();
+		glScalef(1.0 / o.s[0], 1.0 / o.s[1], 1.0 / o.s[2]);
 		glRotatef(-o.r[0], 1, 0, 0);
 		glRotatef(-o.r[1], 0, 1, 0);
 		glRotatef(-o.r[2], 0, 0, 1);
-		glScalef(1.0 / o.s[0], 1.0 / o.s[1], 1.0 / o.s[2]);
+
 		glGetFloatv(GL_MODELVIEW_MATRIX, Minv);
 		lp[0] = light.pLight[i].p[0];
 		lp[1] = light.pLight[i].p[1];
@@ -347,10 +347,11 @@ void addShadowObject(glObject &o, Light light){
 		glPopMatrix();
 		glPushMatrix();
 		glTranslatef(o.t[0], o.t[1], o.t[2]);
-		glScalef(o.s[0], o.s[1], o.s[2]);
+
 		glRotatef(o.r[2], 0, 0, 1);
 		glRotatef(o.r[1], 0, 1, 0);
 		glRotatef(o.r[0], 1, 0, 0);
+		glScalef(o.s[0], o.s[1], o.s[2]);
 		/*drawGLObject(o);*/
 		castShadow(o, lp);
 		glPopMatrix();

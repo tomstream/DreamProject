@@ -11,7 +11,7 @@ void Light::addLight(Vec3f pos){
 	while (used.count(num)) num++;
 	light_num.push_back(num);
 	used.insert(num);
-	
+
 	RGB t;
 	t.r = t.g = t.b = 1.0f;
 	GLfloat color[4] = { t.r, t.g, t.b, 1.0 };
@@ -19,6 +19,9 @@ void Light::addLight(Vec3f pos){
 	glLightfv(num, GL_DIFFUSE, color);
 	glLightfv(num, GL_AMBIENT, color);
 	glLightfv(num, GL_SPECULAR, no);
+	glLightf(num, GL_CONSTANT_ATTENUATION, 1.0);
+	glLightf(num, GL_LINEAR_ATTENUATION, 0.01);
+	glLightf(num, GL_QUADRATIC_ATTENUATION, 0.001);
 	intensity.push_back(t);
 	GLfloat position[4] = { pos[0], pos[1], pos[2], 1 };
 	Pos tp;
@@ -46,6 +49,7 @@ void Light::addSpotLight(Vec3f pos, float cutoff, Vec3f dir, float exp){
 	glLightfv(num, GL_DIFFUSE, color);
 	glLightfv(num, GL_AMBIENT, color);
 	glLightfv(num, GL_SPECULAR, no);
+	glLightf(num, GL_LINEAR_ATTENUATION, 0.1);
 	glLightf(num, GL_SPOT_CUTOFF, cutoff);
 	glLightfv(num, GL_SPOT_DIRECTION, direction);
 	glLightf(num, GL_SPOT_EXPONENT, exp);
@@ -56,6 +60,24 @@ void Light::addSpotLight(Vec3f pos, float cutoff, Vec3f dir, float exp){
 	pLight.push_back(tp);
 	glLightfv(num, GL_POSITION, position);
 	glEnable(num);
+}
+
+void Light::setSpotCutoff(int index, float cutoff){
+	int num = light_num[index];
+	if (num < GL_LIGHT4) return;
+	glLightf(num, GL_SPOT_CUTOFF, cutoff);
+}
+
+void Light::setSpotDir(int index, float *dir){
+	int num = light_num[index];
+	if (num < GL_LIGHT4) return;
+	glLightfv(num, GL_SPOT_DIRECTION, dir);
+}
+
+void Light::setSpotExponent(int index, float exp){
+	int num = light_num[index];
+	if (num < GL_LIGHT4) return;
+	glLightf(num, GL_SPOT_EXPONENT, exp);
 }
 
 void Light::rmLight(int index){
@@ -155,7 +177,7 @@ void Light::changeZ(int index, float len){
 
 void Light::enableLights(){
 	for (int i = 0; i < light_num.size(); ++i){
-		
+
 		int num = light_num[i];
 		Pos &t = pLight[i];
 		//GLfloat position[4] = { t.p[0], t.p[1], t.p[2], 1 };
@@ -167,14 +189,36 @@ void Light::enableLights(){
 
 void Light::drawLights(){
 	for (int i = 0; i < light_num.size(); ++i){
-		glColor3f(intensity[i].r, intensity[i].g, intensity[i].b);
-		glDisable(GL_LIGHTING);		
-		glDepthMask(GL_FALSE);		
+		glColor3f(intensity[i].r * 0.5, intensity[i].g * 0.5, intensity[i].b * 0.5);
+		glDisable(GL_LIGHTING);
+		glDepthMask(GL_FALSE);
 		glPushMatrix();
 		glTranslatef(pLight[i].p[0], pLight[i].p[1], pLight[i].p[2]);
-		glutSolidSphere(0.2, 16, 16);	
+		glutSolidSphere(0.2, 16, 16);
 		glPopMatrix();
-		glEnable(GL_LIGHTING);	
+		glEnable(GL_LIGHTING);
 		glDepthMask(GL_TRUE);
 	}
 }
+
+void Light::setAmbient(int index, float *ambient){
+	int num = light_num[index];
+	glLightfv(num, GL_AMBIENT, ambient);
+}
+
+void Light::setDiffuse(int index, float *diffuse){
+	int num = light_num[index];
+	glLightfv(num, GL_DIFFUSE, diffuse);
+}
+
+void Light::setSpecular(int index, float *specular){
+	int num = light_num[index];
+	glLightfv(num, GL_SPECULAR, specular);
+}
+
+void Light::setEmission(int index, float *emission){
+	int num = light_num[index];
+	glLightfv(num, GL_EMISSION, emission);
+}
+
+

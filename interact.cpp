@@ -14,15 +14,14 @@
 #include <cmath>
 #include <windows.h>
 using namespace std;
-using namespace cv;
 #define UNSELECTED -1;
 
 GLObjectManager basic;
 cv::VideoCapture cap(0);
 
 mutex mtx;
-Mat frame;
-Mat texttmp;
+cv::Mat frame;
+cv::Mat texttmp;
 
 static int selectedId = UNSELECTED;
 int wWidth=0;
@@ -127,7 +126,7 @@ void cvInit(){
 	{
 		cout << "Could not initialize capturing...\n";
 	}
-	namedWindow("Cap", 1);
+	cv::namedWindow("Cap", 1);
 	glGenTextures(1, &cameratexid);
 }
 
@@ -135,12 +134,12 @@ void capture_thread(){
 	while (1){
 		mtx.lock();
 		cap >> frame;
-		cvtColor(frame, texttmp, CV_BGR2RGB);
-		flip(texttmp, texttmp, 0);
+		cv::cvtColor(frame, texttmp, CV_BGR2RGB);
+		cv::flip(texttmp, texttmp, 0);
 		cameraUpdate = true;
 		mtx.unlock();
-		imshow("Cap", frame);
-		waitKey(200);
+		cv::imshow("Cap", frame);
+		cv::waitKey(200);
 	}
 }
 void createMainMenu(void){
@@ -476,33 +475,92 @@ void key(unsigned char k, int x, int y)
 	//case '0': {drawMode++; drawMode %= 3; break; }
 
 	case 'a': {
-		eye[0] -= 0.2f;
-		center[0] -= 0.2f;
+		Vec3f a(cameraDir[0], cameraDir[1], cameraDir[2]);
+		Vec3f b(center[0] - eye[0], center[1] - eye[1], center[2] - eye[2]);
+		Vec3f n = a * b;
+		n.normalize(0.3);
+		Vec3f dir = n;
+		dir.normalize(0.2);
+		if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), n)){
+			for (int i = 0; i < 3; ++i){
+				eye[i] += dir[i];
+				center[i] += dir[i];
+			}
+		}
+		else{
+			cout << "Touch something on the left." << endl;
+		}
 		break;
 	}
 	case 'd': {
-		eye[0] += 0.2f;
-		center[0] += 0.2f;
+		Vec3f b(cameraDir[0], cameraDir[1], cameraDir[2]);
+		Vec3f a(center[0] - eye[0], center[1] - eye[1], center[2] - eye[2]);
+		Vec3f n = a * b;
+		n.normalize(0.3);
+		Vec3f dir = n;
+		dir.normalize(0.2);
+		if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), n)){
+			for (int i = 0; i < 3; ++i){
+				eye[i] += dir[i];
+				center[i] += dir[i];
+			}
+		}
+		else{
+			cout << "Touch something on the right." << endl;
+		}
 		break;
 	}
 	case 'w': {
-		eye[1] -= 0.2f;
-		center[1] -= 0.2f;
+		if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), Vec3f(0, 0.3, 0))){
+			eye[1] += 0.2f;
+			center[1] += 0.2f;
+		}
+		else{
+			cout << "Touch something above." << endl;
+		}
+
 		break;
 	}
 	case 's': {
-		eye[1] += 0.2f;
-		center[1] += 0.2f;
+		if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), Vec3f(0, -0.3, 0))){
+			eye[1] -= 0.2f;
+			center[1] -= 0.2f;
+		}
+		else{
+			cout << "Touch something below." << endl;
+		}
 		break;
 	}
 	case 'z': {
-		eye[2] -= 0.2f;
-		center[2] -= 0.2f;
+		Vec3f n(center[0] - eye[0], center[1] - eye[1], center[2] - eye[2]);
+		n.normalize(0.3);
+		Vec3f dir = n;
+		dir.normalize(0.2);
+		if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), n)){
+			for (int i = 0; i < 3; ++i){
+				eye[i] += dir[i];
+				center[i] += dir[i];
+			}
+		}
+		else{
+			cout << "Touch something ahead." << endl;
+		}
 		break;
 	}
 	case 'c': {
-		eye[2] += 0.2f;
-		center[2] += 0.2f;
+		Vec3f n(eye[0] - center[0], eye[1] - center[1], eye[2] - center[2]);
+		n.normalize(0.3);
+		Vec3f dir = n;
+		dir.normalize(0.2);
+		if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), n)){
+			for (int i = 0; i < 3; ++i){
+				eye[i] += dir[i];
+				center[i] += dir[i];
+			}
+		}
+		else{
+			cout << "Touch something on the back." << endl;
+		}
 		break;
 	}
 

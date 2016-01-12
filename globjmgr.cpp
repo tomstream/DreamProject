@@ -24,12 +24,90 @@ GLObjectManager::GLObjectManager(){
 			continue;
 		}
 		else{
-			objNameVec.push_back(string(str.begin(), str.end()-4));
+			objNameVec.push_back(string(str.begin(), str.end() - 4));
 		}
 	}
 }
 void GLObjectManager::newId(){
 	currentId++;
+}
+
+bool GLObjectManager::testCrash(Vec3f s, Vec3f d){
+	for (int i = 0; i < objs.size(); ++i){
+		glObject &o = objs[i];
+		for (int j = 0; j < o.planeSize; ++j){
+			GLmatrix16f Minv;
+			GLvector4f start = { s[0], s[1], s[2], 1 };
+			GLvector4f end = { s[0] + d[0], s[1] + d[1], s[2] + d[2], 1 };
+			GLvector4f eq = { o.planes[j].PlaneEq.a, o.planes[j].PlaneEq.b,
+				o.planes[j].PlaneEq.c, o.planes[j].PlaneEq.d };
+			glLoadIdentity();
+			glScalef(1.0 / o.s[0], 1.0 / o.s[1], 1.0 / o.s[2]);
+			glRotatef(-o.r[0], 1, 0, 0);
+			glRotatef(-o.r[1], 0, 1, 0);
+			glRotatef(-o.r[2], 0, 0, 1);
+			glTranslatef(-o.t[0], -o.t[1], -o.t[2]);
+			glGetFloatv(GL_MODELVIEW_MATRIX, Minv);
+			GLvector4f neq;
+			for (int ki = 0; ki < 4; ++ki){
+				neq[ki] = 0;
+				for (int kj = 0; kj < 4; ++kj){
+					neq[ki] += eq[kj] * Minv[ki * 4 + kj];
+				}
+			}
+			glLoadIdentity();
+			glTranslatef(o.t[0], o.t[1], o.t[2]);
+
+			glRotatef(o.r[2], 0, 0, 1);
+			glRotatef(o.r[1], 0, 1, 0);
+			glRotatef(o.r[0], 1, 0, 0);
+			glScalef(o.s[0], o.s[1], o.s[2]);
+			glGetFloatv(GL_MODELVIEW_MATRIX, Minv);
+			//VMatMult(Minv, start);
+			//VMatMult(Minv, dir);
+
+			/*float t = o.planes[j].normal[0].x * n[0] +
+			o.planes[j].normal[0].y * n[1] +
+			o.planes[j].normal[0].z * n[2];*/
+			//if (t < 1e-5) continue;
+			float side1 = neq[0] * start[0] + neq[1] * start[1] + neq[2] * start[2] + neq[3] * start[3];
+			float side2 = neq[0] * end[0] + neq[1] * end[1] + neq[2] * end[2] + neq[3] * end[3];
+			if (side1 >= -1e-3 && side2 >= -1e-3 || side1 <= 1e-3 && side2 <= 1e-3) continue;
+			float t1 = (neq[0] * s[0] + neq[1] * s[1] + neq[2] * s[2]);
+			float t2 = (neq[0] * d[0] + neq[1] * d[1] + neq[2] * d[2]);
+			float t = (-neq[3] - t1) / t2;
+			if (t < 1e-5) continue;
+			GLvector4f x = { s[0] + d[0] * t, s[1] + d[1] * t, s[2] + d[2] * t, 1 };
+			GLvector4f v0 = { o.points[o.planes[j].p[0]].x, o.points[o.planes[j].p[0]].y, o.points[o.planes[j].p[0]].z, 1 };
+			GLvector4f v1 = { o.points[o.planes[j].p[1]].x, o.points[o.planes[j].p[1]].y, o.points[o.planes[j].p[1]].z, 1 };
+			GLvector4f v2 = { o.points[o.planes[j].p[2]].x, o.points[o.planes[j].p[2]].y, o.points[o.planes[j].p[2]].z, 1 };
+
+			VMatMult(Minv, v0);
+			VMatMult(Minv, v1);
+			VMatMult(Minv, v2);
+			float ia = 0, ib = 0, ic = 0, ix = 0;
+			for (int mi = 0; mi < 4; ++mi){
+				ia += v0[mi] * neq[mi];
+				ib += v1[mi] * neq[mi];
+				ic += v2[mi] * neq[mi];
+				ix += x[mi] * neq[mi];
+			}
+			Vec3f a(v0[0] - x[0], v0[1] - x[1], v0[2] - x[2]);
+			Vec3f b(v1[0] - x[0], v1[1] - x[1], v1[2] - x[2]);
+			Vec3f c(v2[0] - x[0], v2[1] - x[1], v2[2] - x[2]);
+			Vec3f n1 = a * b;
+			Vec3f n2 = b * c;
+			Vec3f n3 = c * a;
+			float a1 = dot(n1, n2);
+			float a2 = dot(n2, n3);
+			float a3 = dot(n1, n3);
+			if (a1 >= 0 && a2 >= 0 && a3 >= 0){
+				cout << "crash " << i << endl;
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 void GLObjectManager::removeById(int id){
@@ -240,26 +318,26 @@ glObject& GLObjectManager::addSphere(float radius, int slices){
 			int beg = points.size();
 
 			points.push_back(v1);
-			if (i != 1)
-				points.push_back(v2);
+			//if (i != 1)
+			points.push_back(v2);
 			points.push_back(v3);
 			if (i != stack)
 				points.push_back(v4);
 			sPlane p1, p2;
-			if (i != 1){
-				p1.p[0] = beg + 0; p1.p[1] = beg + 1; p1.p[2] = beg + 2;
-				p1.tex[0] = (i - 1) * (stack + 1) + j;
-				p1.tex[1] = (i - 1) * (stack + 1) + j + 1;
-				p1.tex[2] = i * (stack + 1) + j;
-				p1.normal[0] = v1; p1.normal[1] = v2; p1.normal[2] = v3;
-			}
+			//if (i != 1){
+			p1.p[0] = beg + 0; p1.p[1] = beg + 1; p1.p[2] = beg + 2;
+			p1.tex[0] = (i - 1) * (stack + 1) + j;
+			p1.tex[1] = (i - 1) * (stack + 1) + j + 1;
+			p1.tex[2] = i * (stack + 1) + j;
+			p1.normal[0] = v1; p1.normal[1] = v2; p1.normal[2] = v3;
+			/*}
 			else{
-				p1.p[0] = beg + 0; p1.p[1] = beg + 2; p1.p[2] = beg + 1;
-				p1.tex[0] = (i - 1) * (stack + 1) + j;
-				p1.tex[2] = (i - 1) * (stack + 1) + j + 1;
-				p1.tex[1] = i * (stack + 1) + j;
-				p1.normal[0] = v1; p1.normal[1] = v3; p1.normal[2] = v2;
-			}
+			p1.p[0] = beg + 0; p1.p[1] = beg + 2; p1.p[2] = beg + 1;
+			p1.tex[0] = (i - 1) * (stack + 1) + j;
+			p1.tex[2] = (i - 1) * (stack + 1) + j + 1;
+			p1.tex[1] = i * (stack + 1) + j;
+			p1.normal[0] = v1; p1.normal[1] = v3; p1.normal[2] = v2;
+			}*/
 
 			p2.p[0] = beg + 1; p2.p[1] = beg + 3; p2.p[2] = beg + 2;
 			p2.tex[0] = (i - 1) * (stack + 1) + j + 1;
@@ -267,7 +345,7 @@ glObject& GLObjectManager::addSphere(float radius, int slices){
 			p2.tex[2] = i * (stack + 1) + j;
 			p2.normal[0] = v2; p2.normal[1] = v4; p2.normal[2] = v3;
 			planes.push_back(p1);
-			if (i != 1 && i != stack)
+			if (/*i != 1 &&*/ i != stack)
 				planes.push_back(p2);
 		}
 		tr = r;
@@ -709,6 +787,9 @@ glObject& GLObjectManager::addPlane(float len, int slices){
 	obj.planes[3] = p2;
 	obj.id = currentId;
 	ids[currentId] = objs.size();
+	setConnectivity(obj);
+	for (int i = 0; i < obj.planeSize; ++i)
+		calPlane(obj, obj.planes[i]);
 	newId();
 	objs.push_back(obj);
 	return objs[objs.size() - 1];

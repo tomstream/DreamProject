@@ -1,4 +1,4 @@
-#ifndef __GLOBJMGR_H__
+ï»¿#ifndef __GLOBJMGR_H__
 #define __GLOBJMGR_H__
 #include <vector>
 #include <map>
@@ -15,7 +15,7 @@ public:
 	std::vector<glObject> objs;
 	std::map<int, int> ids; //id to index of objs
 	std::set<int> objFile;
-	\
+
 	int currentId = 0;
 	//vector<GLint, int> names;
 	std::vector<std::string> texNameVec;
@@ -34,6 +34,8 @@ public:
 	//and firstly drawAll, then using addShadowObject then drawShadow
 	void drawAll();
 
+	bool testCrash(Vec3f s, Vec3f d);
+
 	void setTexByIndex(int index, int texId);
 	void loadTexByIndex(int index, const char *file);
 	void openTexByIndex(int index);
@@ -49,32 +51,32 @@ public:
 	void scale(int id, float *s);
 	void translate(int id, float *t);
 	void rotate(int id, float *r);
-	//Á¢·½Ìå
+	//ÃÂ¢Â·Â½ÃŒÃ¥
 	glObject& addCube(float len = 1);
 	void drawCube(Vec3f center = Vec3f(0, 0, 0), Vec3f size = Vec3f(1, 1, 1));
-	//ÇòÌå
+	//Ã‡Ã²ÃŒÃ¥
 	glObject& addSphere(float radius = 1, int slices = 20);
 	void drawSphere(Vec3f center = Vec3f(0, 0, 0), Vec3f size = Vec3f(1, 1, 1));
-	//Ô²ÖùºÍÔ²Ì¨
+	//Ã”Â²Ã–Ã¹ÂºÃÃ”Â²ÃŒÂ¨
 	glObject& addCylinder(float radius, float height, int slices = 50);
 	glObject& addCylinder2(float baseR, float topR, float height, int slices = 50);
-	
+
 	void drawCylinder(Vec2f size = Vec2f(1, 1), Vec3f center = Vec3f(0, 0, 0), int slices = 16);
 	void drawCylinder2(float baseR, float topR, float height, Vec3f center = Vec3f(0, 0, 0), int slices = 16);
-	//Ô²×¶ºÍ×µÌå
+	//Ã”Â²Ã—Â¶ÂºÃÃ—ÂµÃŒÃ¥
 	glObject& addCone(float radius, float height, int slices = 50);
 	glObject& addCone2(float radius, float height, int slices);
 
 	void drawCone(float radius, float height, int slices = 16, Vec3f center = Vec3f(0, 0, 0));
 	void drawCone2(float radius, float height, int slices, Vec3f center = Vec3f(0, 0, 0));
-	//ÀâÖùºÍÀâÌ¨
+	//Ã€Ã¢Ã–Ã¹ÂºÃÃ€Ã¢ÃŒÂ¨
 	glObject& addPrism(float radius, float height, int slices);
 	glObject& addPrism2(float baseR, float topR, float height, int slices);
 
 	void drawPrism(float radius, float height, int slices, Vec3f baseCenter = Vec3f(0, 0, 0));
 	void drawPrism2(float baseR, float topR, float height, int slices, Vec3f baseCenter = Vec3f(0, 0, 0));
 	void drawPrismSide(float baseR, float topR, float height, int slices);
-	//¶à±ßĞÎÆ½Ãæ
+	//Â¶Ã Â±ÃŸÃÃÃ†Â½ÃƒÃ¦
 	glObject& addPlane(float len, int slices);
 	glObject& addCircle(float radius, int slices = 16);
 	void drawPlane(float length, int dir = 1, Vec3f center = Vec3f(0, 0, 0));

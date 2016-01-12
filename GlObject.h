@@ -6,7 +6,7 @@
 #include <vector>
 #include <map>
 #include <string>
-typedef float GLvector4f[4];				
+typedef float GLvector4f[4];
 typedef float GLmatrix16f[16];
 struct Tex{
 	float ambient[4];
@@ -32,11 +32,11 @@ struct sPoint{
 	sPoint(float f1, float f2, float f3)
 		:x(f1), y(f2), z(f3) {}
 };
-//平面方程
+//????·???
 struct sPlaneEq{
 	float a, b, c, d;
 };
-//平面
+//????
 struct sPlane{
 	int psize = 0;
 	int p[4];
