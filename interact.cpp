@@ -7,11 +7,21 @@
 #include <cstdio>
 #include <vector>
 #include <GL/glut.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv/cv.h>
+#include <thread>
+#include <mutex>
+#include <windows.h>
+using namespace std;
+using namespace cv;
+#define UNSELECTED -1;
 
 GLObjectManager basic;
+cv::VideoCapture cap(0);
 
-using namespace std;
-#define UNSELECTED -1;
+mutex mtx;
+Mat frame;
+Mat texttmp;
 
 static int selectedId = UNSELECTED;
 int wWidth=0;
@@ -57,6 +67,7 @@ enum MENUID{
 	REMOVE,
 	QUIT_MENU,
 	ROMOVE_TEX,
+	CAMERA_TEX,
 	DISFFUSE_R = GL_DIFFUSE * 4,
 	DISFFUSE_G = GL_DIFFUSE * 4 + 1,
 	DISFFUSE_B = GL_DIFFUSE * 4 + 2,
@@ -82,6 +93,7 @@ enum MENUSTATE{
 	RESET,
 	
 };
+
 vector<MENUID> menuVec;
 static MENUSTATE menuState=RESET;
 
@@ -97,12 +109,33 @@ static int shiness;
 static int emission;
 static int val;
 static int item;
-static int transform;
+static int transformation;
 static int obj;
 
 char textBuffer[100]="";
+unsigned int cameratexid;
 
+void cvInit(){
+	cap.set(CV_CAP_PROP_FRAME_WIDTH, wWidth);
+	cap.set(CV_CAP_PROP_FRAME_HEIGHT, wHeight);
 
+	if (!cap.isOpened())
+	{
+		cout << "Could not initialize capturing...\n";
+	}
+	namedWindow("Cap", 1);
+	glGenTextures(1, &cameratexid);
+}
+
+void capture_thread(){
+	while (1){
+		mtx.lock();
+		cap >> frame;
+		mtx.unlock();
+		imshow("Cap", frame);
+		waitKey(150);
+	}
+}
 void createMainMenu(void){
 	if (menuState == MAIN)return;
 	menuVec.clear();
@@ -221,6 +254,11 @@ void menu(int value)
 	else if (value == ROMOVE_TEX){
 		basic.closeTexById(selectedId);
 	}
+	else if (value == CAMERA_TEX){
+		glObject& obj = basic.getById(selectedId);
+		obj.hasTex = true;
+		obj.tex.texture.texID = cameratexid;
+	}
 	else if (value >= TEXTURE0&&value<TEXTURE0+MAX_TEX){
 		int textureNum = value - TEXTURE0;
 		glObject &obj = basic.getById(selectedId);
@@ -271,7 +309,7 @@ void createItemMenu(){
 	
 	texture = glutCreateMenu(menu);
 	glutAddMenuEntry("清除纹理", ROMOVE_TEX);
-
+	glutAddMenuEntry("相机纹理", CAMERA_TEX);
 	auto& texNameVec = basic.texNameVec;
 	for (int i = 0; i < texNameVec.size();i++){
 		glutAddMenuEntry(texNameVec[i].c_str(), TEXTURE0 + i);
@@ -306,7 +344,7 @@ void createItemMenu(){
 	glutAddSubMenu("镜面反射光",speculars );
 	glutAddSubMenu("发射光",emission);
 
-	transform = glutCreateMenu(menu);
+	transformation = glutCreateMenu(menu);
 	glutAddMenuEntry("平移", TRANSLATE);
 	glutAddMenuEntry("旋转", ROTATE);
 	glutAddMenuEntry("伸缩",SCALE);
@@ -315,7 +353,7 @@ void createItemMenu(){
 	glutAddSubMenu("纹理", texture);
 		
 
-	glutAddSubMenu("几何变换", transform);
+	glutAddSubMenu("几何变换", transformation);
 
 
 	glutAddSubMenu("材料", material);
@@ -609,6 +647,17 @@ void draw_block(float x, float y, float z)
 
 void redraw()
 {
+	mtx.lock();
+	cvtColor(frame, texttmp, CV_BGR2RGB);
+	mtx.unlock();
+	flip(texttmp, texttmp, 0);
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, cameratexid);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, 3, wWidth, wHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, texttmp.data);
+	glDisable(GL_TEXTURE_2D);
+
 	GLmatrix16f Minv;
 	GLvector4f wlp, lp;
 	lp[0] = LightPos[0];
@@ -707,6 +756,9 @@ void startApp(int argc, char **argv){
 	glutKeyboardFunc(key);
 	glutPassiveMotionFunc(motion);
 	createMainMenu();
+	cvInit();
+	std::thread cv_thread(capture_thread);
+	cv_thread.detach();
 	glutMainLoop();
 }
 
@@ -765,3 +817,4 @@ void drawRectangle(int x, int y, int width, int length){
 	glPopMatrix();                // 重置为原保存矩阵
 	glEnable(GL_DEPTH_TEST);
 }
+

@@ -23,5 +23,6 @@ void motion(int x, int y);
 void draw_block(float x, float y, float z);
 
 void drawText(const char* str, int x, int y);
-
+void cvInit();
 void updateTransformArray(int mode, bool pos,int count, float* p);
+void capture_thread();
