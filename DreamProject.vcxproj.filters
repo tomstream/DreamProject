@@ -15,33 +15,66 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GlObject.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="interact.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="GlTexManager.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="file.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="basic.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="globject.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="glut.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="light.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="loader.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="objstream.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="vec.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="glext.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="globjmgr.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="GlObject.cpp">
+    <ClCompile Include="main.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="file.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="basic.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="globject.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="light.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="loader.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="objstream.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="interact.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="GlTexManager.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="file.cpp">
+    <ClCompile Include="globjmgr.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

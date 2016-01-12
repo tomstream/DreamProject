@@ -1,11 +1,13 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS
 #include "interact.h"
-#include "GlObject.h"
-#include "GlTexManager.h"
+#include "globject.h"
+#include "globjmgr.h"
 #include <iostream>
 #include <cstdio>
 #include <vector>
 #include <GL/glut.h>
+
+GLObjectManager objManager;
 
 using namespace std;
 #define UNSELECTED -1;
@@ -40,7 +42,14 @@ enum MENUID{
 	SCALE,
 	TRANSLATE,
 	ROTATE,
-	LENGTAI,
+	CUBE,
+	SPHERE,
+	CYLINDER,
+	CYLINDER2,
+	CONE,
+	CONE2,
+	PRISM,
+	PRISM2,
 	DISFFUSE_R=GL_DIFFUSE*4,
 	DISFFUSE_G=GL_DIFFUSE*4+1,
 	DISFFUSE_B=GL_DIFFUSE*4+2,
@@ -88,7 +97,15 @@ void createMainMenu(void){
 	obj= glutCreateMenu(menu);
 
 	item = glutCreateMenu(menu);
-	glutAddMenuEntry("导入棱台", LENGTAI);
+	glutAddMenuEntry("导入棱柱", CUBE);
+	
+	glutAddMenuEntry("导入球体", SPHERE);
+	glutAddMenuEntry("导入圆柱", CYLINDER);
+	glutAddMenuEntry("导入圆台", CYLINDER2);
+	glutAddMenuEntry("导入圆锥", CONE);
+	glutAddMenuEntry("导入锥体", CONE2);
+	glutAddMenuEntry("导入棱柱", PRISM);
+	glutAddMenuEntry("导入棱台", PRISM2);
 	glutAddSubMenu("导入obj", obj);
 	color = glutCreateMenu(menu);
 
@@ -111,31 +128,66 @@ void menu(int value)
 		cout << "color" << endl;
 	}
 	else if (value == TRANSLATE){
-		GlObject& obj = GlObjectManager::getGlObj(selectedId);
-		transformArray = obj.transArray;
+		glObject &obj = objManager.getById(selectedId);
+		transformArray = obj.t;
 		tranformMode = TRANSLATE;
 	}
 	else if (value == SCALE){
-		GlObject& obj = GlObjectManager::getGlObj(selectedId);
-		transformArray = obj.scaleArray;
+		glObject &obj = objManager.getById(selectedId);
+		transformArray = obj.s;
 		tranformMode = SCALE;
 	}
 	else if (value == ROTATE){
-		GlObject& obj = GlObjectManager::getGlObj(selectedId);
-		transformArray = obj.rotateArray;
+		glObject &obj = objManager.getById(selectedId);
+		transformArray = obj.r;
 		tranformMode = ROTATE;
 	}
-	else if (value == LENGTAI){
-		/*
-		GlObject globj("name", f);
-		GlObjectManager::addGlObj(globj);
-		selectedId=globj.getId();
-		*/
+	else if (value == CUBE){
+		glObject &obj = objManager.addCube();
+		selectedId=obj.id;
+		SPHERE,
+			CYLINDER,
+			CYLINDER2,
+			CONE,
+			CONE2,
+			PRISM,
+			PRISM2;
+	}
+	else if (value == SPHERE){
+		glObject &obj = objManager.addSphere();
+		selectedId = obj.id;
+	}
+	else if (value == CYLINDER){
+		glObject &obj = objManager.addCylinder(1,1);
+		selectedId = obj.id;
+	}
+	else if (value == CYLINDER2){
+		//glObject &obj = objManager.addCylinder(1, 1);
+		//selectedId = obj.id;
+	}
+	else if (value == CONE){
+		glObject &obj = objManager.addCone(1,1);
+		//selectedId = obj.id;
+	}
+	else if (value == CONE2){
+		//glObject &obj = objManager.addCube();
+		//selectedId = obj.id;
+	}
+	else if (value == PRISM){
+		//glObject &obj = objManager.addCube();
+		//selectedId = obj.id;
+	}
+	else if (value == PRISM2){
+		//glObject &obj = objManager.addCube();
+		//selectedId = obj.id;
 	}
 	else if (value > TEXTURE0&&value<TEXTURE0+MAX_TEX){
 		int textureNum = value - TEXTURE0;
-		GlObject& obj = GlObjectManager::getGlObj(selectedId);
-		obj.setTexture(textureNum);
+		glObject &obj = objManager.getById(selectedId);
+		auto& texNameVec = objManager.texNameVec;
+		objManager.loadTexById(selectedId,texNameVec[textureNum].c_str());
+		objManager.openTexById(selectedId);
+		
 	}
 	else if (value > 10000){
 		valueMode = true;
@@ -171,8 +223,9 @@ void createItemMenu(){
 	//add sub menu entry
 	
 	texture = glutCreateMenu(menu);
-	for (auto& content : GlTexManager::textureMap){
-		glutAddMenuEntry(content.first.c_str(), TEXTURE0 + content.second);
+	auto& texNameVec = objManager.texNameVec;
+	for (int i = 0; i < texNameVec.size();i++){
+		glutAddMenuEntry(texNameVec[i].c_str(), TEXTURE0 + i);
 	}
 	disffuse = glutCreateMenu(menu);
 	glutAddMenuEntry("R", DISFFUSE_R);
@@ -225,12 +278,13 @@ void mouseClick(int button, int state, int x, int y)
 		return;
 	if (tranformMode != -1)return;
 	if (valueMode){
-		GlObject& obj = GlObjectManager::getGlObj(selectedId);
+		glObject &obj = objManager.getById(selectedId);
 		int materialpara = currentMaterialMode / 4;
 		int materialNum = currentMaterialMode % 4; 
 		float* arr = obj.getMaterialfv(materialpara);
 		arr[materialNum] = currentValue;
 		textBuffer[0] = 0;
+		valueMode = false;
 		return;
 	}
 	//get viewport and select buffer
@@ -264,7 +318,7 @@ void mouseClick(int button, int state, int x, int y)
 	//draw in select mode and name objects
 	glMatrixMode(GL_MODELVIEW);
 	glRotatef(fRotate, 0, 1.0f, 0);			// Rotate around Y axis
-	GlObjectManager::drawAll();
+	objManager.drawAll();
 
 	//back to project
 	glMatrixMode(GL_PROJECTION);
@@ -277,7 +331,14 @@ void mouseClick(int button, int state, int x, int y)
 	printf("Hits : %d\n", hits);
 	/*Print a list of the objects*/
 	list_hits(hits, selectBuf);
+	/*unsigned int* p = selectBuf;
+	for (int i = 0; i < 6 * 4; i++)
+	{
+		printf("Slot %d: - Value: %d\n", i, p[i]);
+	}
 
+	printf("Buff size: %x\n", (GLbyte)p[0]);
+	*/
 	glMatrixMode(GL_MODELVIEW);
 }
 
@@ -477,7 +538,7 @@ void redraw()
 	glLightfv(GL_LIGHT0, GL_AMBIENT, white);
 	glEnable(GL_LIGHT0);
 	glRotatef(fRotate, 0, 1.0f, 0);			// Rotate around Y axis
-	GlObjectManager::drawAll();	
+	objManager.drawAll();
 	
 
 	if (bAnim) fRotate += 0.5f;
@@ -535,7 +596,6 @@ void startApp(int argc, char **argv){
 	glutKeyboardFunc(key);
 	glutPassiveMotionFunc(motion);
 	createMainMenu();
-	GlTexManager::init();
 	glutMainLoop();
 }
 

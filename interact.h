@@ -9,6 +9,7 @@ void startApp(int argc, char **argv);
 
 void idle();
 void redraw();
+void drawCotents(int mode);
 void updateView(int width, int height);
 void reshape(int width, int height);
 void drawRectangle(int x, int y, int width, int length);

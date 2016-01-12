@@ -38,15 +38,20 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <IncludePath>C:\opencv\build\include;C:\opencv\build\include\opencv;C:\opencv\build\include\opencv2;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\opencv\build\x86\vc12;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -64,17 +69,28 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="basic.h" />
     <ClInclude Include="file.h" />
-    <ClInclude Include="GlObject.h" />
-    <ClInclude Include="GlTexManager.h" />
+    <ClInclude Include="glext.h" />
+    <ClInclude Include="globject.h" />
+    <ClInclude Include="globjmgr.h" />
+    <ClInclude Include="glut.h" />
     <ClInclude Include="interact.h" />
+    <ClInclude Include="light.h" />
+    <ClInclude Include="loader.h" />
+    <ClInclude Include="objstream.h" />
+    <ClInclude Include="vec.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="basic.cpp" />
     <ClCompile Include="file.cpp" />
-    <ClCompile Include="GlObject.cpp" />
-    <ClCompile Include="GlTexManager.cpp" />
+    <ClCompile Include="globject.cpp" />
+    <ClCompile Include="globjmgr.cpp" />
     <ClCompile Include="interact.cpp" />
+    <ClCompile Include="light.cpp" />
+    <ClCompile Include="loader.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="objstream.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
