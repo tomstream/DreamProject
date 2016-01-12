@@ -2,6 +2,7 @@
 #include "interact.h"
 #include "globject.h"
 #include "globjmgr.h"
+#include "file.h"
 #include <iostream>
 #include <cstdio>
 #include <vector>
@@ -54,6 +55,8 @@ enum MENUID{
 	PRISM,
 	PRISM2,
 	REMOVE,
+	QUIT_MENU,
+	ROMOVE_TEX,
 	DISFFUSE_R = GL_DIFFUSE * 4,
 	DISFFUSE_G = GL_DIFFUSE * 4 + 1,
 	DISFFUSE_B = GL_DIFFUSE * 4 + 2,
@@ -108,8 +111,8 @@ void createMainMenu(void){
 	for (int i = 0; i < objNameVec.size(); i++){
 		glutAddMenuEntry(objNameVec[i].c_str(), OBJ0 + i);
 	}
-
-	
+	valueMode = false;
+	tranformMode = -1;
 
 	item = glutCreateMenu(menu);
 	glutAddMenuEntry("导入立方体", CUBE);
@@ -130,6 +133,7 @@ void createMainMenu(void){
 	glutAddMenuEntry("光照",LIGHT);
 
 	glutAddSubMenu("物品", item);
+	
 	
 	//Let the menu respond on the right mouse button
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
@@ -211,6 +215,12 @@ void menu(int value)
 		basic.removeById(selectedId);
 		createMainMenu();
 	}
+	else if (value == QUIT_MENU){
+		createMainMenu();
+	}
+	else if (value == ROMOVE_TEX){
+		basic.closeTexById(selectedId);
+	}
 	else if (value >= TEXTURE0&&value<TEXTURE0+MAX_TEX){
 		int textureNum = value - TEXTURE0;
 		glObject &obj = basic.getById(selectedId);
@@ -260,6 +270,8 @@ void createItemMenu(){
 	//add sub menu entry
 	
 	texture = glutCreateMenu(menu);
+	glutAddMenuEntry("清除纹理", ROMOVE_TEX);
+
 	auto& texNameVec = basic.texNameVec;
 	for (int i = 0; i < texNameVec.size();i++){
 		glutAddMenuEntry(texNameVec[i].c_str(), TEXTURE0 + i);
@@ -308,6 +320,7 @@ void createItemMenu(){
 
 	glutAddSubMenu("材料", material);
 	glutAddMenuEntry("移除", REMOVE);
+	glutAddMenuEntry("退出菜单", QUIT_MENU);
 	//Let the menu respond on the right mouse button
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
@@ -320,6 +333,7 @@ void mouseClick(int button, int state, int x, int y)
 
 	if (button != GLUT_LEFT_BUTTON || state != GLUT_DOWN)
 		return;
+
 	if (tranformMode != -1){ valueMode = 0; return; }
 	if (valueMode){
 		glObject &obj = basic.getById(selectedId);
@@ -338,7 +352,7 @@ void mouseClick(int button, int state, int x, int y)
 
 	//initialize names
 	glInitNames();
-	glPushName(0);
+	glPushName(-1);
 
 	//save projection matrix
 	//glPushMatrix();
@@ -352,8 +366,9 @@ void mouseClick(int button, int state, int x, int y)
 	gluPickMatrix((GLdouble)x, (GLdouble)(viewport[3] - y), 2.0, 2.0, viewport);
 
 	//set projection matrix for select mode
+	whRatio = (GLfloat)wWidth / (GLfloat)wHeight;
 	if (bPersp) {
-		gluPerspective(45.0f, (GLfloat)(viewport[2] - viewport[0]) / (GLfloat)(viewport[3] - viewport[1]), 0.001f, 1000.0f);
+		gluPerspective(45.0f, whRatio, 0.001f, 1000.0f);
 		//glFrustum(-3, 3, -3, 3, 3,100);
 	}
 	else {
@@ -361,7 +376,14 @@ void mouseClick(int button, int state, int x, int y)
 	}
 	//draw in select mode and name objects
 	glMatrixMode(GL_MODELVIEW);
-	glRotatef(fRotate, 0, 1.0f, 0);			// Rotate around Y axis
+
+	glLoadIdentity();
+	gluLookAt(eye[0], eye[1], eye[2],
+		center[0], center[1], center[2],
+		0, 1, 0);
+	glRotatef(fRotate, 0, 1, 0);
+	basic.setDefaultMaterial();
+	   
 	basic.drawAll();
 
 	//back to project
@@ -430,6 +452,8 @@ void key(unsigned char k, int x, int y)
 		center[2] += 0.2f;
 		break;
 	}
+
+		//geometry transform
 	case 'Q':tranformMode = -1; textBuffer[0] = 0;
 		break;
 	case 'W':updateTransformArray(tranformMode, 1, 1, transformArray);
@@ -445,6 +469,7 @@ void key(unsigned char k, int x, int y)
 	case 'C':updateTransformArray(tranformMode, 1, 2, transformArray);
 		break;
 
+	case 'P':SnapScreen(); break;
 	case 'j':{light.changeX(state, -1); break; }
 	case 'l':{light.changeX(state, 1); break; }
 	case 'i':{light.changeY(state, 1); break; }
