@@ -54,7 +54,7 @@ struct sPlane{
 	}
 };
 struct glObject{
-	glObject::glObject();
+	glObject();
 
 	//GLuint nPlanes, nPoints;
 	int pointSize = 0;

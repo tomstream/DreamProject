@@ -16,8 +16,18 @@ GLObjectManager::GLObjectManager(){
 			texNameVec.push_back(str);
 		}
 	}
+	fileName.clear();
+	getFiles("obj", fileName);
+	for (auto &str : fileName){
+		string last3 = string(str.end() - 4, str.end());
+		if (last3 != ".obj"){
+			continue;
+		}
+		else{
+			objNameVec.push_back(string(str.begin(), str.end()-4));
+		}
+	}
 }
-
 void GLObjectManager::newId(){
 	currentId++;
 }
@@ -66,7 +76,7 @@ void GLObjectManager::closeTexById(int id){
 void GLObjectManager::setTexByIndex(int index, int texId){
 	objs[index].tex.texture.texID = texId;
 }
-void GLObjectManager::loadTexByIndex(int index,const  char* file){
+void GLObjectManager::loadTexByIndex(int index, const char* file){
 	TextureImage tex;
 	LoadBMP(&tex, file);
 	objs[index].tex.texture = tex;
@@ -96,15 +106,36 @@ glObject& GLObjectManager::addObj(char *file){
 		obj.id = currentId;
 		objs.push_back(obj);
 	}
+	objFile.insert(currentId);
 	newId();
 	return objs[ids[currentId - 1]];
 }
 
-void GLObjectManager::setObjS(int id, float *s){
+void GLObjectManager::scale(int id, float *s){
 	int i = ids[id];
 	while (i < objs.size() && objs[i].id == id){
 		for (int j = 0; j < 3; ++j){
-			objs[i].s[j] = s[j];
+			objs[i].s[j] *= s[j];
+		}
+		++i;
+	}
+}
+
+void GLObjectManager::translate(int id, float *t){
+	int i = ids[id];
+	while (i < objs.size() && objs[i].id == id){
+		for (int j = 0; j < 3; ++j){
+			objs[i].t[j] += t[j];
+		}
+		++i;
+	}
+}
+
+void GLObjectManager::rotate(int id, float *r){
+	int i = ids[id];
+	while (i < objs.size() && objs[i].id == id){
+		for (int j = 0; j < 3; ++j){
+			objs[i].r[j] += r[j];
 		}
 		++i;
 	}
@@ -369,9 +400,9 @@ glObject& GLObjectManager::addCone(float radius, float height, int slices){
 	float alpha = 2.0 * atan2(0, -1) / slices;
 	obj.texPoints = new Vec2f[slices + 1];
 	for (int i = 0; i < slices; ++i){
-	float x = 0.5 * cos(alpha * i) + 0.5;
-	float y = 0.5 * sin(alpha * i) + 0.5;
-	obj.texPoints[i] = Vec2f(x, y);
+		float x = 0.5 * cos(alpha * i) + 0.5;
+		float y = 0.5 * sin(alpha * i) + 0.5;
+		obj.texPoints[i] = Vec2f(x, y);
 	}
 	obj.texPoints[slices] = Vec2f(0.5, 0.5);
 	sPoint baseC(0, 0, 0);
@@ -436,9 +467,9 @@ glObject& GLObjectManager::addCone2(float radius, float height, int slices){
 	float alpha = 2.0 * atan2(0, -1) / slices;
 	obj.texPoints = new Vec2f[slices + 1];
 	for (int i = 0; i < slices; ++i){
-	float x = 0.5 * cos(alpha * i) + 0.5;
-	float y = 0.5 * sin(alpha * i) + 0.5;
-	obj.texPoints[i] = Vec2f(x, y);
+		float x = 0.5 * cos(alpha * i) + 0.5;
+		float y = 0.5 * sin(alpha * i) + 0.5;
+		obj.texPoints[i] = Vec2f(x, y);
 	}
 	obj.texPoints[slices] = Vec2f(0.5, 0.5);
 	sPoint baseC(0, 0, 0);
@@ -685,7 +716,7 @@ glObject& GLObjectManager::addPlane(float len, int slices){
 
 void GLObjectManager::drawAll(){
 	for (int i = 0; i < objs.size(); ++i){
-		
+
 		drawGLObject(objs[i]);
 	}
 }

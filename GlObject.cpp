@@ -10,14 +10,10 @@ glObject::glObject(){
 		s[i] = 1.0;
 	}
 	hasTex = false;
-	if (this->materialFMap.size() != 0){
-		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, tex.ambient);
-		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, tex.diffuse);
-		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, tex.specular);
-		//glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, shininessDefault);
-		glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, tex.emission);
-		//glMaterialfv(GL_FRONT_AND_BACK, GL_COLOR_INDEX, colorIndexDefault);
-	}
+	materialFMap[ GL_AMBIENT]= tex.ambient;
+	materialFMap[GL_DIFFUSE] = tex.diffuse;
+	materialFMap[GL_SPECULAR] = tex.specular;
+	materialFMap[GL_EMISSION] = tex.emission;
 }
 
 void setConnectivity(glObject &o){

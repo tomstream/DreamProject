@@ -1,8 +1,15 @@
 #include "interact.h"
 
-#include <thread>
+#include "globjmgr.h"
 #include <GL/glut.h>
+
 using namespace std;
+
+extern GLObjectManager basic;
+
+void init(){
+
+}
 
 void task(){
 	char*argv[] = { "1", 0 };

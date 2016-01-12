@@ -7,15 +7,18 @@
 #include <vector>
 #include <GL/glut.h>
 
-GLObjectManager objManager;
+GLObjectManager basic;
 
 using namespace std;
 #define UNSELECTED -1;
 
 static int selectedId = UNSELECTED;
-int windowWidth=600;
-int windowHeight=800;
+int wWidth=0;
+int wHeight=0;
 float whRatio;
+
+Light light;
+float LightPos[] = { 5.0f, 5.0f, 5.0f, 1.0f };
 
 float center[] = { 0, -0.8, -6 };
 float eye[] = { 0, 1.2, 2 };
@@ -50,20 +53,25 @@ enum MENUID{
 	CONE2,
 	PRISM,
 	PRISM2,
-	DISFFUSE_R=GL_DIFFUSE*4,
-	DISFFUSE_G=GL_DIFFUSE*4+1,
-	DISFFUSE_B=GL_DIFFUSE*4+2,
-	DISFFUSE_A=GL_DIFFUSE*4+3,
-	AMBIENT_R=GL_AMBIENT*4,
-	AMBIENT_G=GL_AMBIENT*4+1,
-	AMBIENT_B=GL_AMBIENT*4+2,
-	AMBIENT_A=GL_AMBIENT*4+3,
-	SPECULAR_R=GL_SPECULAR*4,
-	SPECULAR_B=GL_SPECULAR*4+1,
-	SPECULAR_G=GL_SPECULAR*4+2,
-	SPECULAR_A=GL_SPECULAR*4+3,
-	SHINESS=GL_SHININESS*4,
-	TEXTURE0 = 222
+	REMOVE,
+	DISFFUSE_R = GL_DIFFUSE * 4,
+	DISFFUSE_G = GL_DIFFUSE * 4 + 1,
+	DISFFUSE_B = GL_DIFFUSE * 4 + 2,
+	DISFFUSE_A = GL_DIFFUSE * 4 + 3,
+	AMBIENT_R = GL_AMBIENT * 4,
+	AMBIENT_G = GL_AMBIENT * 4 + 1,
+	AMBIENT_B = GL_AMBIENT * 4 + 2,
+	AMBIENT_A = GL_AMBIENT * 4 + 3,
+	SPECULAR_R = GL_SPECULAR * 4,
+	SPECULAR_B = GL_SPECULAR * 4 + 1,
+	SPECULAR_G = GL_SPECULAR * 4 + 2,
+	SPECULAR_A = GL_SPECULAR * 4 + 3,
+	EMISSION_R = GL_EMISSION * 4,
+	EMISSION_G = GL_EMISSION * 4 + 1,
+	EMISSION_B = GL_EMISSION * 4 + 2,
+	EMISSION_A = GL_EMISSION * 4 + 3,
+	TEXTURE0 = 222,
+	OBJ0 = 333
 };
 enum MENUSTATE{
 	MAIN,
@@ -83,6 +91,7 @@ static int disffuse;
 static int ambient;
 static int speculars;
 static int shiness;
+static int emission;
 static int val;
 static int item;
 static int transform;
@@ -95,9 +104,15 @@ void createMainMenu(void){
 	if (menuState == MAIN)return;
 	menuVec.clear();
 	obj= glutCreateMenu(menu);
+	auto& objNameVec = basic.objNameVec;
+	for (int i = 0; i < objNameVec.size(); i++){
+		glutAddMenuEntry(objNameVec[i].c_str(), OBJ0 + i);
+	}
+
+	
 
 	item = glutCreateMenu(menu);
-	glutAddMenuEntry("导入棱柱", CUBE);
+	glutAddMenuEntry("导入立方体", CUBE);
 	
 	glutAddMenuEntry("导入球体", SPHERE);
 	glutAddMenuEntry("导入圆柱", CYLINDER);
@@ -128,66 +143,88 @@ void menu(int value)
 		cout << "color" << endl;
 	}
 	else if (value == TRANSLATE){
-		glObject &obj = objManager.getById(selectedId);
+		glObject &obj = basic.getById(selectedId);
 		transformArray = obj.t;
 		tranformMode = TRANSLATE;
 	}
 	else if (value == SCALE){
-		glObject &obj = objManager.getById(selectedId);
+		glObject &obj = basic.getById(selectedId);
 		transformArray = obj.s;
 		tranformMode = SCALE;
 	}
 	else if (value == ROTATE){
-		glObject &obj = objManager.getById(selectedId);
+		glObject &obj = basic.getById(selectedId);
 		transformArray = obj.r;
 		tranformMode = ROTATE;
 	}
 	else if (value == CUBE){
-		glObject &obj = objManager.addCube();
+		glObject &obj = basic.addCube();
 		selectedId=obj.id;
-		SPHERE,
-			CYLINDER,
-			CYLINDER2,
-			CONE,
-			CONE2,
-			PRISM,
-			PRISM2;
 	}
 	else if (value == SPHERE){
-		glObject &obj = objManager.addSphere();
+		glObject &obj = basic.addSphere();
 		selectedId = obj.id;
+		createItemMenu();
 	}
 	else if (value == CYLINDER){
-		glObject &obj = objManager.addCylinder(1,1);
+		glObject &obj = basic.addCylinder(1,1);
 		selectedId = obj.id;
+		createItemMenu();
 	}
 	else if (value == CYLINDER2){
-		//glObject &obj = objManager.addCylinder(1, 1);
-		//selectedId = obj.id;
+		float baseR, topR, height;
+		cout << "Input [baseR][topR][height]" << endl<<">";
+		cin >> baseR >> topR >> height;
+		glObject &obj = basic.addCylinder2(baseR,topR,height);
+		selectedId = obj.id;
+		createItemMenu();
 	}
 	else if (value == CONE){
-		glObject &obj = objManager.addCone(1,1);
-		//selectedId = obj.id;
+		glObject &obj = basic.addCone(1,1);
+		selectedId = obj.id;
+		createItemMenu();
 	}
 	else if (value == CONE2){
-		//glObject &obj = objManager.addCube();
-		//selectedId = obj.id;
+		float radius, height, slices;
+		cout << "Input [radius][height][slice]" << endl<<">";
+		cin >> radius >> height >> slices;
+		glObject &obj = basic.addCone2(radius,height,slices);
+		selectedId = obj.id;
+		createItemMenu();
 	}
 	else if (value == PRISM){
-		//glObject &obj = objManager.addCube();
-		//selectedId = obj.id;
+		float radius, height, slices;
+		cout << "Input [radius][height][slice]" << endl << ">";
+		cin >> radius >> height >> slices;
+		glObject &obj = basic.addPrism(radius, height, slices);
+		selectedId = obj.id;
+		createItemMenu();
 	}
 	else if (value == PRISM2){
-		//glObject &obj = objManager.addCube();
-		//selectedId = obj.id;
+		float baseR,topR, height, slices;
+		cout << "Input [radius][height][slice]" << endl << ">";
+		cin >> baseR>>topR >> height >> slices;
+		glObject &obj = basic.addPrism2(baseR,topR, height, slices);
+		createItemMenu();
 	}
-	else if (value > TEXTURE0&&value<TEXTURE0+MAX_TEX){
+	else if (value == REMOVE){
+		basic.removeById(selectedId);
+		createMainMenu();
+	}
+	else if (value >= TEXTURE0&&value<TEXTURE0+MAX_TEX){
 		int textureNum = value - TEXTURE0;
-		glObject &obj = objManager.getById(selectedId);
-		auto& texNameVec = objManager.texNameVec;
-		objManager.loadTexById(selectedId,texNameVec[textureNum].c_str());
-		objManager.openTexById(selectedId);
+		glObject &obj = basic.getById(selectedId);
+		auto& texNameVec = basic.texNameVec;
+		basic.loadTexById(selectedId,texNameVec[textureNum].c_str());
+		basic.openTexById(selectedId);
 		
+	}
+	else if (value>=OBJ0&&value < OBJ0 + 30){
+		int objNum = value - OBJ0;
+		auto& objNameVec = basic.objNameVec;
+		string objName = objNameVec[objNum];
+		glObject &obj = basic.addObj((char*)(objName.c_str()));
+		basic.openTexById(obj.id);
 	}
 	else if (value > 10000){
 		valueMode = true;
@@ -206,7 +243,7 @@ void motion(int x, int y)
 	if (valueMode){
 		unsigned char pixel[4];
 		if (y < 20){
-			float value = x * 1.0/ windowWidth;
+			float value = x * 1.0/ wWidth;
 			sprintf(textBuffer, "value:%f", value);
 			currentValue = value;
 		}
@@ -223,7 +260,7 @@ void createItemMenu(){
 	//add sub menu entry
 	
 	texture = glutCreateMenu(menu);
-	auto& texNameVec = objManager.texNameVec;
+	auto& texNameVec = basic.texNameVec;
 	for (int i = 0; i < texNameVec.size();i++){
 		glutAddMenuEntry(texNameVec[i].c_str(), TEXTURE0 + i);
 	}
@@ -245,11 +282,17 @@ void createItemMenu(){
 	glutAddMenuEntry("B", SPECULAR_B);
 	glutAddMenuEntry("A", SPECULAR_A);
 
+	emission = glutCreateMenu(menu);
+	glutAddMenuEntry("R", EMISSION_R);
+	glutAddMenuEntry("G", EMISSION_G);
+	glutAddMenuEntry("B", EMISSION_B);
+	glutAddMenuEntry("A", EMISSION_A);
+
 	material = glutCreateMenu(menu);
 	glutAddSubMenu("环境光", ambient);
 	glutAddSubMenu("散射光", disffuse);
 	glutAddSubMenu("镜面反射光",speculars );
-	glutAddMenuEntry("反射指数",SHINESS );
+	glutAddSubMenu("发射光",emission);
 
 	transform = glutCreateMenu(menu);
 	glutAddMenuEntry("平移", TRANSLATE);
@@ -264,6 +307,7 @@ void createItemMenu(){
 
 
 	glutAddSubMenu("材料", material);
+	glutAddMenuEntry("移除", REMOVE);
 	//Let the menu respond on the right mouse button
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
@@ -276,9 +320,9 @@ void mouseClick(int button, int state, int x, int y)
 
 	if (button != GLUT_LEFT_BUTTON || state != GLUT_DOWN)
 		return;
-	if (tranformMode != -1)return;
+	if (tranformMode != -1){ valueMode = 0; return; }
 	if (valueMode){
-		glObject &obj = objManager.getById(selectedId);
+		glObject &obj = basic.getById(selectedId);
 		int materialpara = currentMaterialMode / 4;
 		int materialNum = currentMaterialMode % 4; 
 		float* arr = obj.getMaterialfv(materialpara);
@@ -318,7 +362,7 @@ void mouseClick(int button, int state, int x, int y)
 	//draw in select mode and name objects
 	glMatrixMode(GL_MODELVIEW);
 	glRotatef(fRotate, 0, 1.0f, 0);			// Rotate around Y axis
-	objManager.drawAll();
+	basic.drawAll();
 
 	//back to project
 	glMatrixMode(GL_PROJECTION);
@@ -341,7 +385,7 @@ void mouseClick(int button, int state, int x, int y)
 	*/
 	glMatrixMode(GL_MODELVIEW);
 }
-
+int state = 0;
 
 
 void key(unsigned char k, int x, int y)
@@ -386,7 +430,7 @@ void key(unsigned char k, int x, int y)
 		center[2] += 0.2f;
 		break;
 	}
-	case 'Q':tranformMode = -1;
+	case 'Q':tranformMode = -1; textBuffer[0] = 0;
 		break;
 	case 'W':updateTransformArray(tranformMode, 1, 1, transformArray);
 		break;
@@ -400,25 +444,51 @@ void key(unsigned char k, int x, int y)
 		break;
 	case 'C':updateTransformArray(tranformMode, 1, 2, transformArray);
 		break;
-	}
 
-	updateView(windowWidth, windowHeight);
+	case 'j':{light.changeX(state, -1); break; }
+	case 'l':{light.changeX(state, 1); break; }
+	case 'i':{light.changeY(state, 1); break; }
+	case 'k':{light.changeY(state, -1); break; }
+	case 'm':{light.changeZ(state, 1); break; }
+	case '.':{light.changeZ(state, -1); break; }
+		/*case 'j':{LightPos[0] -= 0.5f; break; }
+		case 'l':{LightPos[0] += 0.5f; break; }
+		case 'i':{LightPos[1] += 0.5f; break; }
+		case 'k':{LightPos[1] -= 0.5f; break; }
+		case 'm':{LightPos[2] += 0.5f; break; }
+		case '.':{LightPos[2] -= 0.5f; break; }*/
+
+	case 'u':{light.addLight(); break; }
+	case 'r':{light.rmLight(state); if (light.pLight.size())state %= light.pLight.size(); break; }
+	case 'f':{light.closeLight(state); break; }
+	case 'v':{light.openLight(state); break; }
+
+	case 'y':{light.addIntensity(state, 0); break; }
+	case 'h':{light.subIntensity(state, 0); break; }
+	}
+	updateView(wWidth,wHeight);
+	glutPostRedisplay();
 }
 
 void updateTransformArray(int mode, bool pos,int count, float* p){
+	float tarray[3] = {};
 	if (mode == -1)return;
 	else{
 		if (mode == TRANSLATE){
-			if (pos)transformArray[count] += 0.1;
-			else transformArray[count] -= 0.1;
+			if (pos)tarray[count] = 0.1;
+			else tarray[count] = -0.1;
+			basic.translate(selectedId, tarray);
 		}
 		else if (mode == SCALE){
-			if (pos)transformArray[count] *= 0.95;
-			else transformArray[count] /= 0.95;
+			tarray[0] = tarray[1] = tarray[2] = 1;
+			if (pos)tarray[count] = 0.95;
+			else tarray[count] =1/0.95;
+			basic.scale(selectedId, tarray);
 		}
 		else if (mode == ROTATE){
-			if (pos)transformArray[count] += 5;
-			else transformArray[count] -= 5;
+			if (pos)tarray[count] = 5;
+			else tarray[count] =- 5;
+			basic.rotate(selectedId, tarray);
 		}
 	}
 }
@@ -436,7 +506,7 @@ void list_hits(int hits, unsigned int *names)
 	3. Max Z
 	4. Name of the hit (glLoadName)
 	*/
-
+	/*
 	printf("%d hits:\n", hits);
 
 	for (int i = 0; i < hits; i++)
@@ -451,7 +521,7 @@ void list_hits(int hits, unsigned int *names)
 		);
 
 	printf("\n");
-
+	*/
 	int i;
 	if (hits == 0){
 		puts("catch nothing!");
@@ -514,14 +584,19 @@ void draw_block(float x, float y, float z)
 
 void redraw()
 {
-	
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glLoadIdentity();									// Reset The Current Modelview Matrix
-
+	GLmatrix16f Minv;
+	GLvector4f wlp, lp;
+	lp[0] = LightPos[0];
+	lp[1] = LightPos[1];
+	lp[2] = LightPos[2];
+	lp[3] = LightPos[3];
+	// Clear Color Buffer, Depth Buffer, Stencil Buffer
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	glClearColor(0.2, 0.2, 1.0, 1.0);
+	glLoadIdentity();
 	gluLookAt(eye[0], eye[1], eye[2],
 		center[0], center[1], center[2],
-		0, 1, 0);				// ≥°æ∞£®0£¨0£¨0£©µƒ ”µ„÷––ƒ (0,5,50)£¨Y÷·œÚ…œ
-
+		0, 1, 0);
 	if (bWire) {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	}
@@ -529,23 +604,34 @@ void redraw()
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}
 
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_LIGHTING);
-	GLfloat white[] = { 1.0, 1.0, 1.0, 1.0 };
-	GLfloat light_pos[] = { 5, 5, 5, 1 };
-
-	glLightfv(GL_LIGHT0, GL_POSITION, light_pos);
-	glLightfv(GL_LIGHT0, GL_AMBIENT, white);
-	glEnable(GL_LIGHT0);
-	glRotatef(fRotate, 0, 1.0f, 0);			// Rotate around Y axis
-	objManager.drawAll();
+	glShadeModel(GL_SMOOTH);
 	
 
+	glLightfv(GL_LIGHT1, GL_POSITION, lp);
+	light.enableLights();
+	
+	glRotatef(fRotate, 0, 1, 0);
+	basic.setDefaultMaterial();
+
+	basic.drawAll();
+
+	//basic.objs[0].r[0] = 180;
+
+	for (int i = 0; i < basic.objs.size(); ++i)
+		addShadowObject(basic.objs[i], light);
+	drawShadow();
+
+	glPushMatrix();
+	glTranslatef(0, -3, 0);
+	glutSolidCube(1.0);
+	glPopMatrix();
+
+	light.drawLights();
 	if (bAnim) fRotate += 0.5f;
 	drawText(textBuffer, 100, 100);
-	//getFPS();
 	if (valueMode)
-		drawRectangle(0, windowHeight-20, windowWidth, 20);
+		drawRectangle(0, wHeight - 20, wWidth, 20);
+	glFlush();
 	glutSwapBuffers();
 	
 }
@@ -554,7 +640,7 @@ void redraw()
 void updateView(int width, int height)
 {
 							// Reset The Current Viewport
-	glViewport(0, 0, windowWidth , windowHeight);
+	glViewport(0, 0, wWidth , wHeight);
 	glMatrixMode(GL_PROJECTION);						// Select The Projection Matrix
 	glLoadIdentity();									// Reset The Projection Matrix
 
@@ -577,16 +663,16 @@ void reshape(int width, int height)
 		height = 1;										// Making Height Equal One
 	}
 
-	windowHeight = height;
-	windowWidth = width;
+	wHeight = height;
+	wWidth = width;
 
-	updateView(height, width);
+	updateView(width, height);
 }
 
 void startApp(int argc, char **argv){
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH | GLUT_DOUBLE);
-	glutInitWindowSize(windowHeight, windowWidth);
+	glutInitWindowSize(640, 480);
 	glutInitWindowPosition(0, 0);
 	int windowHandle = glutCreateWindow("Simple GLUT App");
 	glutDisplayFunc(redraw);
@@ -610,11 +696,11 @@ void drawText(const char* str, int x, int y)
 	glMatrixMode(GL_PROJECTION);  // 选择投影矩阵
 	glPushMatrix();               // 保存原矩阵
 	glLoadIdentity();             // 装入单位矩阵
-	glOrtho(0, windowWidth, 0, windowHeight, -1, 1);    // 位置正投影
+	glOrtho(0, wWidth, 0, wHeight, -1, 1);    // 位置正投影
 	glMatrixMode(GL_MODELVIEW);   // 选择Modelview矩阵
 	glPushMatrix();               // 保存原矩阵
 	glLoadIdentity();             // 装入单位矩阵
-	glRasterPos2f(x, windowHeight-y);
+	glRasterPos2f(x, wHeight-y);
 	for (; *str != '\0'; str++) {
 		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *str);
 	}
@@ -630,7 +716,7 @@ void drawRectangle(int x, int y, int width, int length){
 	glMatrixMode(GL_PROJECTION);  // 选择投影矩阵
 	glPushMatrix();               // 保存原矩阵
 	glLoadIdentity();             // 装入单位矩阵
-	glOrtho(0, windowWidth, 0, windowHeight, -1, 1);    // 位置正投影
+	glOrtho(0, wWidth, 0, wHeight, -1, 1);    // 位置正投影
 	glMatrixMode(GL_MODELVIEW);   // 选择Modelview矩阵
 	glPushMatrix();               // 保存原矩阵
 	glLoadIdentity();             // 装入单位矩阵

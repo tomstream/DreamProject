@@ -2,19 +2,24 @@
 #define __GLOBJMGR_H__
 #include <vector>
 #include <map>
+#include <set>
 #include "globject.h"
 #include "objstream.h"
 #include "vec.h"
 
 #define MAX_TEX 30
+#define MAX_OBJ 30
 class GLObjectManager{
 public:
 	GLObjectManager();
-	vector<glObject> objs;
-	map<int, int> ids; //id to index of objs
+	std::vector<glObject> objs;
+	std::map<int, int> ids; //id to index of objs
+	std::set<int> objFile;
+	\
 	int currentId = 0;
 	//vector<GLint, int> names;
 	std::vector<std::string> texNameVec;
+	std::vector<std::string> objNameVec;
 	int getId(){
 		return currentId++;
 	}
@@ -41,7 +46,9 @@ public:
 	void setDefaultMaterial();
 
 	glObject& addObj(char *file);
-	void setObjS(int id, float *s);
+	void scale(int id, float *s);
+	void translate(int id, float *t);
+	void rotate(int id, float *r);
 	//Α’·½Με
 	glObject& addCube(float len = 1);
 	void drawCube(Vec3f center = Vec3f(0, 0, 0), Vec3f size = Vec3f(1, 1, 1));
