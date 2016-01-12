@@ -11,6 +11,7 @@
 #include <opencv/cv.h>
 #include <thread>
 #include <mutex>
+#include <cmath>
 #include <windows.h>
 using namespace std;
 using namespace cv;
@@ -33,9 +34,11 @@ float LightPos[] = { 5.0f, 5.0f, 5.0f, 1.0f };
 
 float center[] = { 0, -0.8, -6 };
 float eye[] = { 0, 1.2, 2 };
+float cameraDir[] = { 0, 1, 0 };
+double cameraAngle = 0;
 
 bool bPersp = true;
-bool bAnim = false;
+int bAnim = 0;
 bool bWire = false;
 float fTranslate;
 float fRotate = 156.5f;
@@ -114,6 +117,7 @@ static int obj;
 
 char textBuffer[100]="";
 unsigned int cameratexid;
+bool cameraUpdate = false;
 
 void cvInit(){
 	cap.set(CV_CAP_PROP_FRAME_WIDTH, wWidth);
@@ -131,9 +135,12 @@ void capture_thread(){
 	while (1){
 		mtx.lock();
 		cap >> frame;
+		cvtColor(frame, texttmp, CV_BGR2RGB);
+		flip(texttmp, texttmp, 0);
+		cameraUpdate = true;
 		mtx.unlock();
 		imshow("Cap", frame);
-		waitKey(150);
+		waitKey(200);
 	}
 }
 void createMainMenu(void){
@@ -418,7 +425,7 @@ void mouseClick(int button, int state, int x, int y)
 	glLoadIdentity();
 	gluLookAt(eye[0], eye[1], eye[2],
 		center[0], center[1], center[2],
-		0, 1, 0);
+		cameraDir[0], cameraDir[1], cameraDir[2]);
 	glRotatef(fRotate, 0, 1, 0);
 	basic.setDefaultMaterial();
 	   
@@ -456,7 +463,15 @@ void key(unsigned char k, int x, int y)
 	case 'q': {exit(0); break; }
 	case 'p': {bPersp = !bPersp; break; }
 
-	case ' ': {bAnim = !bAnim; break; }
+	case ' ': {
+		if (!bAnim){
+			cameraAngle = 0;
+			bAnim = 1; 
+		}
+		else if (bAnim == 1)bAnim = 2;
+		else bAnim = 0;
+		break;  
+	}
 	case 'o': {bWire = !bWire; break; }
 	//case '0': {drawMode++; drawMode %= 3; break; }
 
@@ -533,6 +548,35 @@ void key(unsigned char k, int x, int y)
 	glutPostRedisplay();
 }
 
+void processSpecialKeys(int key, int x, int y) {
+
+	switch (key) {
+	case GLUT_KEY_LEFT : {
+		center[0] -= 0.3;
+		break;
+	}
+	case GLUT_KEY_RIGHT : {
+		center[0] += 0.3;
+		break;
+	}
+	case GLUT_KEY_UP: {
+		center[1] -= 0.3;
+		break;
+	}
+	case GLUT_KEY_DOWN: {
+		center[1] += 0.3;
+		break;
+	}
+	case GLUT_KEY_PAGE_UP: {
+		center[2] -= 0.3;
+		break;
+	}
+	case GLUT_KEY_PAGE_DOWN: {
+		center[2] += 0.3;
+		break;
+	}
+	}
+}
 void updateTransformArray(int mode, bool pos,int count, float* p){
 	float tarray[3] = {};
 	if (mode == -1)return;
@@ -647,16 +691,18 @@ void draw_block(float x, float y, float z)
 
 void redraw()
 {
+	
 	mtx.lock();
-	cvtColor(frame, texttmp, CV_BGR2RGB);
+	if (cameraUpdate){
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, cameratexid);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, 3, wWidth, wHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, texttmp.data);
+		glDisable(GL_TEXTURE_2D);
+		cameraUpdate = false;
+	}
 	mtx.unlock();
-	flip(texttmp, texttmp, 0);
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, cameratexid);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, 3, wWidth, wHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, texttmp.data);
-	glDisable(GL_TEXTURE_2D);
 
 	GLmatrix16f Minv;
 	GLvector4f wlp, lp;
@@ -670,7 +716,7 @@ void redraw()
 	glLoadIdentity();
 	gluLookAt(eye[0], eye[1], eye[2],
 		center[0], center[1], center[2],
-		0, 1, 0);
+		cameraDir[0], cameraDir[1], cameraDir[2]);
 	if (bWire) {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	}
@@ -701,7 +747,27 @@ void redraw()
 	glPopMatrix();
 
 	light.drawLights();
-	if (bAnim) fRotate += 0.5f;
+	auto rFunc = [=]()->float{
+		return sqrt(pow(center[0]-eye[0],2)+pow(center[2]-eye[2],2));
+	};
+	if (bAnim == 1){ 
+		
+		float r = rFunc();
+		int dx = r*(cos(cameraAngle) - cos(cameraAngle + 0.3));
+		int dz = r*(sin(cameraAngle) - sin(cameraAngle + 0.3));
+		center[0] -= dx;
+		center[2] -= dz;
+		cameraAngle += 0.3; 
+	}
+	if (bAnim == 2){
+
+		float r = rFunc();
+		int dx = r*(cos(cameraAngle) - cos(cameraAngle - 0.3));
+		int dz = r*(sin(cameraAngle) - sin(cameraAngle - 0.3));
+		center[0] -= dx;
+		center[2] -= dz;
+		cameraAngle -= 0.3;
+	}
 	drawText(textBuffer, 100, 100);
 	if (valueMode)
 		drawRectangle(0, wHeight - 20, wWidth, 20);
@@ -742,7 +808,120 @@ void reshape(int width, int height)
 
 	updateView(width, height);
 }
-
+void initGL(){
+	light.addLight();
+	TextureImage tex;
+	LoadBMP(&tex, "Monet.bmp");
+	int tid = tex.texID;
+	//walls
+	{
+		glObject &o = basic.addCube(1.0);
+		o.r[0] = -90;
+	}
+	{
+		glObject &o = basic.addPlane(10, 4);
+		o.s[0] = 5; o.s[2] = 3;
+		o.t[1] = -5;
+		float diffuse[4] = { 1, 0, 0, 1 };
+		float ambient[4] = { 0.6, 0, 0, 1 };
+		o.setDiffuse(diffuse);
+		o.setAmbient(ambient);
+	}
+	{
+		glObject &o = basic.addPlane(10, 4);
+		o.s[0] = 5; o.s[2] = 3;
+		o.t[1] = 15;
+		float diffuse[4] = { 0, 1, 0, 1 };
+		float ambient[4] = { 0, 0.6, 0, 1 };
+		o.setDiffuse(diffuse);
+		o.setAmbient(ambient);
+	}
+	{
+		glObject &o = basic.addPlane(10, 4);
+		o.s[0] = 5; o.s[2] = 2;
+		o.r[0] = -90;
+		o.t[2] = -15; o.t[1] = 5;
+		float diffuse[4] = { 0, 0, 1, 1 };
+		float ambient[4] = { 0, 0, 0.6, 1 };
+		o.setDiffuse(diffuse);
+		o.setAmbient(ambient);
+	}
+	{
+		glObject &o = basic.addPlane(10, 4);
+		o.s[0] = 3; o.s[2] = 2;
+		o.r[0] = -90; o.r[1] = -90;
+		o.t[0] = -25; o.t[1] = 5;
+		float diffuse[4] = { 1, 0, 1, 1 };
+		float ambient[4] = { 0.6, 0, 0.6, 1 };
+		o.setDiffuse(diffuse);
+		o.setAmbient(ambient);
+	}
+	{
+		glObject &o = basic.addPlane(10, 4);
+		o.s[0] = 3; o.s[2] = 2;
+		o.r[0] = -90; o.r[1] = -90;
+		o.t[0] = 25; o.t[1] = 5;
+		float diffuse[4] = { 0, 1, 1, 1 };
+		float ambient[4] = { 0, 0.6, 0.6, 1 };
+		o.setDiffuse(diffuse);
+		o.setAmbient(ambient);
+	}
+	{
+		glObject &o = basic.addCube(1.0);
+		o.t[1] = -3; o.t[0] = 3;
+	}
+	{
+		glObject &o = basic.addCone(1, 1);
+		o.t[1] = 3; o.t[2] = -1;
+	}
+	{
+		glObject &o = basic.addCone2(1, 2, 8);
+		o.t[0] = -3; o.t[2] = 1;
+	}
+	{
+		glObject &o = basic.addCylinder2(1, 2, 1.5);
+		o.t[0] = 6; o.t[1] = 2;
+	}
+	{
+		glObject &o = basic.addCylinder(3, 2, 1.5);
+		o.t[0] = 6; o.t[1] = 5; o.t[2] = -4;
+	}
+	{
+		glObject &o = basic.addPrism(4, 0.5, 5);
+		o.t[0] = -6; o.t[1] = 5; o.t[2] = -4;
+	}
+	{
+		glObject &o = basic.addPrism2(3, 1, 3, 6);
+		o.t[0] = -4; o.t[1] = 3; o.t[2] = 4;
+	}
+	{
+		glObject &o = basic.addSphere(4, 100);
+		o.t[0] = 16;
+	}
+	{
+		glObject &o = basic.addObj("obj\\Creature\\Arakkoa\\arakkoa_sage");
+		float t[3] = { -8, 0, 0 };
+		//basic.openTexById(o.id);
+		basic.translate(o.id, t);
+	}
+	{
+		glObject &o = basic.addObj("obj\\Tails");
+		float t[3] = { -16, 0, 0 };
+		//basic.openTexById(o.id);
+		basic.translate(o.id, t);
+	}
+	glShadeModel(GL_SMOOTH);
+	glClearColor(0.2, 0.2, 1.0, 1.0);
+	glClearDepth(1.0f);
+	glClearStencil(0);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+	glEnable(GL_LIGHTING);								// Enable Lightins
+	glEnable(GL_NORMALIZE);
+	glCullFace(GL_BACK);
+	glEnable(GL_CULL_FACE);
+}
 void startApp(int argc, char **argv){
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH | GLUT_DOUBLE);
@@ -754,11 +933,13 @@ void startApp(int argc, char **argv){
 	glutIdleFunc(idle);
 	glutMouseFunc(mouseClick);
 	glutKeyboardFunc(key);
+	glutSpecialFunc(processSpecialKeys);
 	glutPassiveMotionFunc(motion);
 	createMainMenu();
 	cvInit();
 	std::thread cv_thread(capture_thread);
 	cv_thread.detach();
+	initGL();
 	glutMainLoop();
 }
 

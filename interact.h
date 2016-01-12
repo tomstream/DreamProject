@@ -26,3 +26,4 @@ void drawText(const char* str, int x, int y);
 void cvInit();
 void updateTransformArray(int mode, bool pos,int count, float* p);
 void capture_thread();
+void processSpecialKeys(int key, int x, int y);
