@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <map>
+#include <set>
 #include <string>
 #define MAX_TEX 30
 class GlTexManager
@@ -12,6 +13,7 @@ public:
 	static bool texload(const char *filename, int i);
 	static void addParas(int i, std::pair<int, int> para);
 	static void init();
+	static std::set<std::string> textureNameSet;
 	static std::map<int,int> defaults;
 	static int defaultEnv;
 	static void drawdefaultTexSetting();

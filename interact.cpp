@@ -24,8 +24,8 @@ cv::Mat frame;
 cv::Mat texttmp;
 
 static int selectedId = UNSELECTED;
-int wWidth=0;
-int wHeight=0;
+int wWidth = 0;
+int wHeight = 0;
 float whRatio;
 
 Light light;
@@ -36,16 +36,19 @@ float eye[] = { 0, 1.2, 2 };
 float cameraDir[] = { 0, 1, 0 };
 double cameraAngle = 0;
 
+bool bTestCrash = false;
 bool bPersp = true;
 int bAnim = 0;
 bool bWire = false;
 float fTranslate;
-float fRotate = 156.5f;
+float fRotate = 0;
 float fScale = 1.0f;	// set inital scale value to 1.0f
 
 bool valueMode = false;
 int currentMaterialMode = 0;
 float currentValue = 0;
+
+int selectLightChannel = -1;
 
 int tranformMode = -1;
 float* transformArray;
@@ -66,10 +69,23 @@ enum MENUID{
 	CONE2,
 	PRISM,
 	PRISM2,
+	PLANE,
 	REMOVE,
 	QUIT_MENU,
 	ROMOVE_TEX,
 	CAMERA_TEX,
+
+	ADD_LIGHT,
+	SPOT_LIGHT,
+	NORMAL_LIGHT,
+	SELECT_LIGHT,
+	CHOSE_LIGHT,
+	CHANGE_LIGHT_PARA,
+	CHANGE_LIGHT_R,
+	CHANGE_LIGHT_G,
+	CHANGE_LIGHT_B,
+	CHANGE_LIGHT_A,
+
 	DISFFUSE_R = GL_DIFFUSE * 4,
 	DISFFUSE_G = GL_DIFFUSE * 4 + 1,
 	DISFFUSE_B = GL_DIFFUSE * 4 + 2,
@@ -87,17 +103,20 @@ enum MENUID{
 	EMISSION_B = GL_EMISSION * 4 + 2,
 	EMISSION_A = GL_EMISSION * 4 + 3,
 	TEXTURE0 = 222,
-	OBJ0 = 333
+	OBJ0 = 333,
+	LIGHT_BASE=444
 };
 enum MENUSTATE{
 	MAIN,
 	OBJ,
 	RESET,
-	
+
 };
 
+int state = 0;//light to chose
+
 vector<MENUID> menuVec;
-static MENUSTATE menuState=RESET;
+static MENUSTATE menuState = RESET;
 
 static int menuid;
 static int color;
@@ -113,20 +132,26 @@ static int val;
 static int item;
 static int transformation;
 static int obj;
+static int lightedit;
+static int addlight;
+static int selectlight;
+static int changelightpara;
 
-char textBuffer[100]="";
+char textBuffer[100] = "";
 unsigned int cameratexid;
 bool cameraUpdate = false;
 
+int cameraWidth, cameraHeight;
 void cvInit(){
 	cap.set(CV_CAP_PROP_FRAME_WIDTH, wWidth);
 	cap.set(CV_CAP_PROP_FRAME_HEIGHT, wHeight);
-
+	cameraWidth = wWidth;
+	cameraHeight = wHeight;
 	if (!cap.isOpened())
 	{
 		cout << "Could not initialize capturing...\n";
 	}
-	cv::namedWindow("Cap", 1);
+	//cv::namedWindow("Cap", 1);
 	glGenTextures(1, &cameratexid);
 }
 
@@ -138,14 +163,14 @@ void capture_thread(){
 		cv::flip(texttmp, texttmp, 0);
 		cameraUpdate = true;
 		mtx.unlock();
-		cv::imshow("Cap", frame);
+		//cv::imshow("Cap", frame);
 		cv::waitKey(200);
 	}
 }
 void createMainMenu(void){
 	if (menuState == MAIN)return;
 	menuVec.clear();
-	obj= glutCreateMenu(menu);
+	obj = glutCreateMenu(menu);
 	auto& objNameVec = basic.objNameVec;
 	for (int i = 0; i < objNameVec.size(); i++){
 		glutAddMenuEntry(objNameVec[i].c_str(), OBJ0 + i);
@@ -155,7 +180,7 @@ void createMainMenu(void){
 
 	item = glutCreateMenu(menu);
 	glutAddMenuEntry("导入立方体", CUBE);
-	
+
 	glutAddMenuEntry("导入球体", SPHERE);
 	glutAddMenuEntry("导入圆柱", CYLINDER);
 	glutAddMenuEntry("导入圆台", CYLINDER2);
@@ -164,16 +189,45 @@ void createMainMenu(void){
 	glutAddMenuEntry("导入棱柱", PRISM);
 	glutAddMenuEntry("导入棱台", PRISM2);
 	glutAddSubMenu("导入obj", obj);
+	
+	
+	
+	
+	addlight = glutCreateMenu(menu);
+	glutAddMenuEntry("增加聚光灯", SPOT_LIGHT);
+	glutAddMenuEntry("增加普通光源", NORMAL_LIGHT);
+	
+
+	selectlight = glutCreateMenu(menu);;
+	for (int i = 0; i < light.light_num.size(); i++){
+		static char buffer[100];
+		sprintf(buffer, "光源%d", i);
+		glutAddMenuEntry(buffer, LIGHT_BASE + i);
+	}
+	
+	
+	changelightpara = glutCreateMenu(menu);
+	glutAddMenuEntry("R", CHANGE_LIGHT_R);
+	glutAddMenuEntry("G", CHANGE_LIGHT_G);
+	glutAddMenuEntry("B", CHANGE_LIGHT_B);
+	glutAddMenuEntry("A", CHANGE_LIGHT_A);
+	
+
+	lightedit = glutCreateMenu(menu);
+	glutAddSubMenu("增加光源", addlight);
+	glutAddSubMenu("选择光源", selectlight);
+	glutAddSubMenu("改变光质", changelightpara);
 	color = glutCreateMenu(menu);
 
+	
 	menuVec.push_back(LIGHT);
 	menuVec.push_back(ITEM);
 	//add sub menu entry
-	glutAddMenuEntry("光照",LIGHT);
+	glutAddSubMenu("光照", lightedit);
 
 	glutAddSubMenu("物品", item);
-	
-	
+
+
 	//Let the menu respond on the right mouse button
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
@@ -202,7 +256,7 @@ void menu(int value)
 	}
 	else if (value == CUBE){
 		glObject &obj = basic.addCube();
-		selectedId=obj.id;
+		selectedId = obj.id;
 	}
 	else if (value == SPHERE){
 		glObject &obj = basic.addSphere();
@@ -210,28 +264,28 @@ void menu(int value)
 		createItemMenu();
 	}
 	else if (value == CYLINDER){
-		glObject &obj = basic.addCylinder(1,1);
+		glObject &obj = basic.addCylinder(1, 1);
 		selectedId = obj.id;
 		createItemMenu();
 	}
 	else if (value == CYLINDER2){
 		float baseR, topR, height;
-		cout << "Input [baseR][topR][height]" << endl<<">";
+		cout << "Input [baseR][topR][height]" << endl << ">";
 		cin >> baseR >> topR >> height;
-		glObject &obj = basic.addCylinder2(baseR,topR,height);
+		glObject &obj = basic.addCylinder2(baseR, topR, height);
 		selectedId = obj.id;
 		createItemMenu();
 	}
 	else if (value == CONE){
-		glObject &obj = basic.addCone(1,1);
+		glObject &obj = basic.addCone(1, 1);
 		selectedId = obj.id;
 		createItemMenu();
 	}
 	else if (value == CONE2){
 		float radius, height, slices;
-		cout << "Input [radius][height][slice]" << endl<<">";
+		cout << "Input [radius][height][slice]" << endl << ">";
 		cin >> radius >> height >> slices;
-		glObject &obj = basic.addCone2(radius,height,slices);
+		glObject &obj = basic.addCone2(radius, height, slices);
 		selectedId = obj.id;
 		createItemMenu();
 	}
@@ -244,10 +298,10 @@ void menu(int value)
 		createItemMenu();
 	}
 	else if (value == PRISM2){
-		float baseR,topR, height, slices;
+		float baseR, topR, height, slices;
 		cout << "Input [radius][height][slice]" << endl << ">";
-		cin >> baseR>>topR >> height >> slices;
-		glObject &obj = basic.addPrism2(baseR,topR, height, slices);
+		cin >> baseR >> topR >> height >> slices;
+		glObject &obj = basic.addPrism2(baseR, topR, height, slices);
 		createItemMenu();
 	}
 	else if (value == REMOVE){
@@ -262,25 +316,49 @@ void menu(int value)
 	}
 	else if (value == CAMERA_TEX){
 		glObject& obj = basic.getById(selectedId);
-		obj.hasTex = true;
-		obj.tex.texture.texID = cameratexid;
+		basic.setTexById(obj.id, cameratexid);
+		basic.openTexById(obj.id);
+		//obj.hasTex = true;
+		//obj.tex.texture.texID = cameratexid;
 	}
-	else if (value >= TEXTURE0&&value<TEXTURE0+MAX_TEX){
+	else if (value == SPOT_LIGHT){
+		light.addSpotLight();
+		createMainMenu();
+	}
+	else if (value == NORMAL_LIGHT){
+		light.addLight();
+		createMainMenu();
+	}
+	else if (value == CHANGE_LIGHT_R){
+		selectLightChannel = 0;
+	}
+	else if (value == CHANGE_LIGHT_G){
+		selectLightChannel = 1;
+	}
+	else if (value == CHANGE_LIGHT_B){
+		selectLightChannel = 2;
+	}
+	else if (value == CHANGE_LIGHT_A){
+		selectLightChannel = 3;
+	}
+	else if (value >= TEXTURE0&&value<TEXTURE0 + MAX_TEX){
 		int textureNum = value - TEXTURE0;
 		glObject &obj = basic.getById(selectedId);
 		auto& texNameVec = basic.texNameVec;
-		basic.loadTexById(selectedId,texNameVec[textureNum].c_str());
+		basic.loadTexById(selectedId, texNameVec[textureNum].c_str());
 		basic.openTexById(selectedId);
-		
 	}
-	else if (value>=OBJ0&&value < OBJ0 + 30){
+	else if (value >= OBJ0&&value < OBJ0 + 30){
 		int objNum = value - OBJ0;
 		auto& objNameVec = basic.objNameVec;
 		string objName = objNameVec[objNum];
 		glObject &obj = basic.addObj((char*)(objName.c_str()));
 		basic.openTexById(obj.id);
 	}
-	else if (value > 10000){
+	else if (value >= LIGHT_BASE&&value < LIGHT_BASE + MAX_LIGHT){
+		state = value - LIGHT_BASE;
+	}
+	else if (value > 3000){
 		valueMode = true;
 		currentMaterialMode = value;
 	}
@@ -297,7 +375,7 @@ void motion(int x, int y)
 	if (valueMode){
 		unsigned char pixel[4];
 		if (y < 20){
-			float value = x * 1.0/ wWidth;
+			float value = x * 1.0 / wWidth;
 			sprintf(textBuffer, "value:%f", value);
 			currentValue = value;
 		}
@@ -312,12 +390,12 @@ void createItemMenu(){
 	menuVec.push_back(MATERIAL);
 	menuVec.push_back(TEXTURE);
 	//add sub menu entry
-	
+
 	texture = glutCreateMenu(menu);
 	glutAddMenuEntry("清除纹理", ROMOVE_TEX);
 	glutAddMenuEntry("相机纹理", CAMERA_TEX);
 	auto& texNameVec = basic.texNameVec;
-	for (int i = 0; i < texNameVec.size();i++){
+	for (int i = 0; i < texNameVec.size(); i++){
 		glutAddMenuEntry(texNameVec[i].c_str(), TEXTURE0 + i);
 	}
 	disffuse = glutCreateMenu(menu);
@@ -347,17 +425,17 @@ void createItemMenu(){
 	material = glutCreateMenu(menu);
 	glutAddSubMenu("环境光", ambient);
 	glutAddSubMenu("散射光", disffuse);
-	glutAddSubMenu("镜面反射光",speculars );
-	glutAddSubMenu("发射光",emission);
+	glutAddSubMenu("镜面反射光", speculars);
+	glutAddSubMenu("发射光", emission);
 
 	transformation = glutCreateMenu(menu);
 	glutAddMenuEntry("平移", TRANSLATE);
 	glutAddMenuEntry("旋转", ROTATE);
-	glutAddMenuEntry("伸缩",SCALE);
-	
+	glutAddMenuEntry("伸缩", SCALE);
+
 	menuid = glutCreateMenu(menu);
 	glutAddSubMenu("纹理", texture);
-		
+
 
 	glutAddSubMenu("几何变换", transformation);
 
@@ -378,17 +456,18 @@ void mouseClick(int button, int state, int x, int y)
 	if (button != GLUT_LEFT_BUTTON || state != GLUT_DOWN)
 		return;
 
-	if (tranformMode != -1){ valueMode = 0; return; }
 	if (valueMode){
 		glObject &obj = basic.getById(selectedId);
+		
 		int materialpara = currentMaterialMode / 4;
-		int materialNum = currentMaterialMode % 4; 
+		int materialNum = currentMaterialMode % 4;
 		float* arr = obj.getMaterialfv(materialpara);
 		arr[materialNum] = currentValue;
 		textBuffer[0] = 0;
 		valueMode = false;
 		return;
 	}
+	if (tranformMode != -1){ valueMode = 0; return; }
 	//get viewport and select buffer
 	glGetIntegerv(GL_VIEWPORT, viewport);
 	glSelectBuffer(512, selectBuf);
@@ -404,7 +483,7 @@ void mouseClick(int button, int state, int x, int y)
 	glPushMatrix();
 	glLoadIdentity();
 
-	
+
 	//set pick matrix
 	//gluPickMatrix((GLdouble)x, (GLdouble)(viewport[3] - y), 1.0, 1.0, viewport);
 	gluPickMatrix((GLdouble)x, (GLdouble)(viewport[3] - y), 2.0, 2.0, viewport);
@@ -416,7 +495,7 @@ void mouseClick(int button, int state, int x, int y)
 		//glFrustum(-3, 3, -3, 3, 3,100);
 	}
 	else {
-		glOrtho(-3, 3, -3, 3, -100, 100);
+		glOrtho(-3, 3, -3, 3, 0, 100);
 	}
 	//draw in select mode and name objects
 	glMatrixMode(GL_MODELVIEW);
@@ -425,9 +504,8 @@ void mouseClick(int button, int state, int x, int y)
 	gluLookAt(eye[0], eye[1], eye[2],
 		center[0], center[1], center[2],
 		cameraDir[0], cameraDir[1], cameraDir[2]);
-	glRotatef(fRotate, 0, 1, 0);
 	basic.setDefaultMaterial();
-	   
+
 	basic.drawAll();
 
 	//back to project
@@ -444,18 +522,19 @@ void mouseClick(int button, int state, int x, int y)
 	/*unsigned int* p = selectBuf;
 	for (int i = 0; i < 6 * 4; i++)
 	{
-		printf("Slot %d: - Value: %d\n", i, p[i]);
+	printf("Slot %d: - Value: %d\n", i, p[i]);
 	}
 
 	printf("Buff size: %x\n", (GLbyte)p[0]);
 	*/
 	glMatrixMode(GL_MODELVIEW);
 }
-int state = 0;
+
 
 
 void key(unsigned char k, int x, int y)
 {
+
 	switch (k)
 	{
 	case 27:
@@ -464,16 +543,21 @@ void key(unsigned char k, int x, int y)
 
 	case ' ': {
 		if (!bAnim){
-			cameraAngle = 0;
-			bAnim = 1; 
+			bAnim = 1;
 		}
-		else if (bAnim == 1)bAnim = 2;
 		else bAnim = 0;
-		break;  
+		break;
+	}
+	case 'x': {
+		if (!bAnim){
+			bAnim = 2;
+		}
+		else bAnim = 0;
+		break;
 	}
 	case 'o': {bWire = !bWire; break; }
-	//case '0': {drawMode++; drawMode %= 3; break; }
-
+		//case '0': {drawMode++; drawMode %= 3; break; }
+	case 'b': {bTestCrash = !bTestCrash; break; }
 	case 'a': {
 		Vec3f a(cameraDir[0], cameraDir[1], cameraDir[2]);
 		Vec3f b(center[0] - eye[0], center[1] - eye[1], center[2] - eye[2]);
@@ -481,7 +565,13 @@ void key(unsigned char k, int x, int y)
 		n.normalize(0.3);
 		Vec3f dir = n;
 		dir.normalize(0.2);
-		if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), n)){
+		if (!bTestCrash){
+			for (int i = 0; i < 3; ++i){
+				eye[i] += dir[i];
+				center[i] += dir[i];
+			}
+		}
+		else if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), n)){
 			for (int i = 0; i < 3; ++i){
 				eye[i] += dir[i];
 				center[i] += dir[i];
@@ -499,7 +589,13 @@ void key(unsigned char k, int x, int y)
 		n.normalize(0.3);
 		Vec3f dir = n;
 		dir.normalize(0.2);
-		if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), n)){
+		if (!bTestCrash){
+			for (int i = 0; i < 3; ++i){
+				eye[i] += dir[i];
+				center[i] += dir[i];
+			}
+		}
+		else if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), n)){
 			for (int i = 0; i < 3; ++i){
 				eye[i] += dir[i];
 				center[i] += dir[i];
@@ -511,7 +607,11 @@ void key(unsigned char k, int x, int y)
 		break;
 	}
 	case 'w': {
-		if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), Vec3f(0, 0.3, 0))){
+		if (!bTestCrash){
+			eye[1] += 0.2f;
+			center[1] += 0.2f;
+		}
+		else if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), Vec3f(0, 0.3, 0))){
 			eye[1] += 0.2f;
 			center[1] += 0.2f;
 		}
@@ -522,7 +622,11 @@ void key(unsigned char k, int x, int y)
 		break;
 	}
 	case 's': {
-		if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), Vec3f(0, -0.3, 0))){
+		if (!bTestCrash){
+			eye[1] -= 0.2f;
+			center[1] -= 0.2f;
+		}
+		else if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), Vec3f(0, -0.3, 0))){
 			eye[1] -= 0.2f;
 			center[1] -= 0.2f;
 		}
@@ -536,7 +640,13 @@ void key(unsigned char k, int x, int y)
 		n.normalize(0.3);
 		Vec3f dir = n;
 		dir.normalize(0.2);
-		if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), n)){
+		if (!bTestCrash){
+			for (int i = 0; i < 3; ++i){
+				eye[i] += dir[i];
+				center[i] += dir[i];
+			}
+		}
+		else if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), n)){
 			for (int i = 0; i < 3; ++i){
 				eye[i] += dir[i];
 				center[i] += dir[i];
@@ -552,7 +662,13 @@ void key(unsigned char k, int x, int y)
 		n.normalize(0.3);
 		Vec3f dir = n;
 		dir.normalize(0.2);
-		if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), n)){
+		if (!bTestCrash){
+			for (int i = 0; i < 3; ++i){
+				eye[i] += dir[i];
+				center[i] += dir[i];
+			}
+		}
+		else if (!basic.testCrash(Vec3f(eye[0], eye[1], eye[2]), n)){
 			for (int i = 0; i < 3; ++i){
 				eye[i] += dir[i];
 				center[i] += dir[i];
@@ -580,6 +696,24 @@ void key(unsigned char k, int x, int y)
 	case 'C':updateTransformArray(tranformMode, 1, 2, transformArray);
 		break;
 
+	case '=':
+		if (selectLightChannel != -1){
+			light.addIntensity(state, selectLightChannel);
+		}
+		break;
+	case '-':
+		if (selectLightChannel != -1){
+			light.subIntensity(state, selectLightChannel);
+		}
+		break;
+
+	case 'J':{light.dirX(state, -1); break; }
+	case 'L':{light.dirX(state, 1); break; }
+	case 'I':{light.dirY(state, 1); break; }
+	case 'K':{light.dirY(state, -1); break; }
+	case 'U':{light.dirZ(state, 1); break; }
+	case 'O':{light.dirZ(state, -1); break; }
+
 	case 'P':SnapScreen(); break;
 	case 'j':{light.changeX(state, -1); break; }
 	case 'l':{light.changeX(state, 1); break; }
@@ -602,27 +736,27 @@ void key(unsigned char k, int x, int y)
 	case 'y':{light.addIntensity(state, 0); break; }
 	case 'h':{light.subIntensity(state, 0); break; }
 	}
-	updateView(wWidth,wHeight);
+	updateView(wWidth, wHeight);
 	glutPostRedisplay();
 }
 
 void processSpecialKeys(int key, int x, int y) {
 
 	switch (key) {
-	case GLUT_KEY_LEFT : {
+	case GLUT_KEY_LEFT: {
 		center[0] -= 0.3;
 		break;
 	}
-	case GLUT_KEY_RIGHT : {
+	case GLUT_KEY_RIGHT: {
 		center[0] += 0.3;
 		break;
 	}
 	case GLUT_KEY_UP: {
-		center[1] -= 0.3;
+		center[1] += 0.3;
 		break;
 	}
 	case GLUT_KEY_DOWN: {
-		center[1] += 0.3;
+		center[1] -= 0.3;
 		break;
 	}
 	case GLUT_KEY_PAGE_UP: {
@@ -634,8 +768,9 @@ void processSpecialKeys(int key, int x, int y) {
 		break;
 	}
 	}
+
 }
-void updateTransformArray(int mode, bool pos,int count, float* p){
+void updateTransformArray(int mode, bool pos, int count, float* p){
 	float tarray[3] = {};
 	if (mode == -1)return;
 	else{
@@ -647,12 +782,12 @@ void updateTransformArray(int mode, bool pos,int count, float* p){
 		else if (mode == SCALE){
 			tarray[0] = tarray[1] = tarray[2] = 1;
 			if (pos)tarray[count] = 0.95;
-			else tarray[count] =1/0.95;
+			else tarray[count] = 1 / 0.95;
 			basic.scale(selectedId, tarray);
 		}
 		else if (mode == ROTATE){
 			if (pos)tarray[count] = 5;
-			else tarray[count] =- 5;
+			else tarray[count] = -5;
 			basic.rotate(selectedId, tarray);
 		}
 	}
@@ -675,15 +810,15 @@ void list_hits(int hits, unsigned int *names)
 	printf("%d hits:\n", hits);
 
 	for (int i = 0; i < hits; i++)
-		printf("Number: %d\n"
-		"Min Z: %d\n"
-		"Max Z: %d\n"
-		"Name on stack: %d\n",
-		(GLubyte)names[i * 4],
-		(GLubyte)names[i * 4 + 1],
-		(GLubyte)names[i * 4 + 2],
-		(GLubyte)names[i * 4 + 3]
-		);
+	printf("Number: %d\n"
+	"Min Z: %d\n"
+	"Max Z: %d\n"
+	"Name on stack: %d\n",
+	(GLubyte)names[i * 4],
+	(GLubyte)names[i * 4 + 1],
+	(GLubyte)names[i * 4 + 2],
+	(GLubyte)names[i * 4 + 3]
+	);
 
 	printf("\n");
 	*/
@@ -710,7 +845,7 @@ void list_hits(int hits, unsigned int *names)
 		unsigned int Z, id;
 		id = (GLubyte)names[i * 4 + 3];
 		Z = names[i * 4 + 1];
-		cout <<i<<":"<< id<<" "<<Z<<" "<<names[i*4+1]<<endl;
+		cout << i << ":" << id << " " << Z << " " << names[i * 4 + 1] << endl;
 		if (Z < minZ){
 			minZ = Z;
 			minId = id;
@@ -718,7 +853,7 @@ void list_hits(int hits, unsigned int *names)
 	}
 	selectedId = minId;
 	createItemMenu();
-	cout << selectedId << endl<<endl;
+	cout << selectedId << endl << endl;
 }
 
 void idle()
@@ -749,14 +884,14 @@ void draw_block(float x, float y, float z)
 
 void redraw()
 {
-	
+
 	mtx.lock();
 	if (cameraUpdate){
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, cameratexid);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexImage2D(GL_TEXTURE_2D, 0, 3, wWidth, wHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, texttmp.data);
+		glTexImage2D(GL_TEXTURE_2D, 0, 3, cameraWidth, cameraHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, texttmp.data);
 		glDisable(GL_TEXTURE_2D);
 		cameraUpdate = false;
 	}
@@ -783,12 +918,11 @@ void redraw()
 	}
 
 	glShadeModel(GL_SMOOTH);
-	
+
 
 	glLightfv(GL_LIGHT1, GL_POSITION, lp);
 	light.enableLights();
-	
-	glRotatef(fRotate, 0, 1, 0);
+
 	basic.setDefaultMaterial();
 
 	basic.drawAll();
@@ -799,46 +933,54 @@ void redraw()
 		addShadowObject(basic.objs[i], light);
 	drawShadow();
 
-	glPushMatrix();
-	glTranslatef(0, -3, 0);
-	glutSolidCube(1.0);
-	glPopMatrix();
 
 	light.drawLights();
 	auto rFunc = [=]()->float{
-		return sqrt(pow(center[0]-eye[0],2)+pow(center[2]-eye[2],2));
+		return sqrt(pow(center[0] - eye[0], 2) + pow(center[2] - eye[2], 2));
 	};
-	if (bAnim == 1){ 
-		
+	if (bAnim == 1){
+
 		float r = rFunc();
-		int dx = r*(cos(cameraAngle) - cos(cameraAngle + 0.3));
+		float theta = atan2(center[2] - eye[2], center[0] - eye[0]);
+		theta += 0.03;
+		float x = r * cos(theta);
+		float y = r * sin(theta);
+		center[0] = x + eye[0];
+		center[2] = y + eye[2];
+		/*int dx = r*(cos(cameraAngle) - cos(cameraAngle + 0.3));
 		int dz = r*(sin(cameraAngle) - sin(cameraAngle + 0.3));
 		center[0] -= dx;
 		center[2] -= dz;
-		cameraAngle += 0.3; 
+		cameraAngle += 0.3; */
 	}
 	if (bAnim == 2){
 
 		float r = rFunc();
-		int dx = r*(cos(cameraAngle) - cos(cameraAngle - 0.3));
+		float theta = atan2(center[2] - eye[2], center[0] - eye[0]);
+		theta -= 0.03;
+		float x = r * cos(theta);
+		float y = r * sin(theta);
+		center[0] = x + eye[0];
+		center[2] = y + eye[2];
+		/*int dx = r*(cos(cameraAngle) - cos(cameraAngle - 0.3));
 		int dz = r*(sin(cameraAngle) - sin(cameraAngle - 0.3));
 		center[0] -= dx;
 		center[2] -= dz;
-		cameraAngle -= 0.3;
+		cameraAngle -= 0.3;*/
 	}
 	drawText(textBuffer, 100, 100);
 	if (valueMode)
 		drawRectangle(0, wHeight - 20, wWidth, 20);
 	glFlush();
 	glutSwapBuffers();
-	
+
 }
 
 
 void updateView(int width, int height)
 {
-							// Reset The Current Viewport
-	glViewport(0, 0, wWidth , wHeight);
+	// Reset The Current Viewport
+	glViewport(0, 0, width, height);
 	glMatrixMode(GL_PROJECTION);						// Select The Projection Matrix
 	glLoadIdentity();									// Reset The Projection Matrix
 
@@ -848,7 +990,7 @@ void updateView(int width, int height)
 		//glFrustum(-3, 3, -3, 3, 3,100);
 	}
 	else {
-		glOrtho(-3, 3, -3, 3, -100, 100);
+		glOrtho(-3, 3, -3, 3, 0, 100);
 	}
 
 	glMatrixMode(GL_MODELVIEW);							// Select The Modelview Matrix
@@ -956,18 +1098,18 @@ void initGL(){
 		glObject &o = basic.addSphere(4, 100);
 		o.t[0] = 16;
 	}
-	{
-		glObject &o = basic.addObj("obj\\Creature\\Arakkoa\\arakkoa_sage");
-		float t[3] = { -8, 0, 0 };
-		//basic.openTexById(o.id);
-		basic.translate(o.id, t);
+	/*{
+	glObject &o = basic.addObj("obj\\Creature\\Arakkoa\\arakkoa_sage");
+	float t[3] = { -8, 0, 0 };
+	//basic.openTexById(o.id);
+	basic.translate(o.id, t);
 	}
 	{
-		glObject &o = basic.addObj("obj\\Tails");
-		float t[3] = { -16, 0, 0 };
-		//basic.openTexById(o.id);
-		basic.translate(o.id, t);
-	}
+	glObject &o = basic.addObj("obj\\Tails");
+	float t[3] = { -16, 0, 0 };
+	//basic.openTexById(o.id);
+	basic.translate(o.id, t);
+	}*/
 	glShadeModel(GL_SMOOTH);
 	glClearColor(0.2, 0.2, 1.0, 1.0);
 	glClearDepth(1.0f);
@@ -1016,7 +1158,7 @@ void drawText(const char* str, int x, int y)
 	glMatrixMode(GL_MODELVIEW);   // 选择Modelview矩阵
 	glPushMatrix();               // 保存原矩阵
 	glLoadIdentity();             // 装入单位矩阵
-	glRasterPos2f(x, wHeight-y);
+	glRasterPos2f(x, wHeight - y);
 	for (; *str != '\0'; str++) {
 		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *str);
 	}
@@ -1036,7 +1178,7 @@ void drawRectangle(int x, int y, int width, int length){
 	glMatrixMode(GL_MODELVIEW);   // 选择Modelview矩阵
 	glPushMatrix();               // 保存原矩阵
 	glLoadIdentity();             // 装入单位矩阵
-	
+
 	glTranslatef(x, y, 0);
 	glScalef(width, length, 1);
 	glBegin(GL_QUADS);

@@ -18,7 +18,7 @@ void Light::addLight(Vec3f pos){
 	GLfloat no[4] = { 0, 0, 0, 1.0 };
 	glLightfv(num, GL_DIFFUSE, color);
 	glLightfv(num, GL_AMBIENT, color);
-	glLightfv(num, GL_SPECULAR, no);
+	glLightfv(num, GL_SPECULAR, color);
 	glLightf(num, GL_CONSTANT_ATTENUATION, 1.0);
 	glLightf(num, GL_LINEAR_ATTENUATION, 0.01);
 	glLightf(num, GL_QUADRATIC_ATTENUATION, 0.001);
@@ -40,7 +40,7 @@ void Light::addSpotLight(Vec3f pos, float cutoff, Vec3f dir, float exp){
 	while (used.count(num)) num++;
 	light_num.push_back(num);
 	used.insert(num);
-
+	Light::dir[num] = dir;
 	RGB t;
 	t.r = t.g = t.b = 1.0f;
 	GLfloat color[4] = { t.r, t.g, t.b, 1.0 };
@@ -48,8 +48,10 @@ void Light::addSpotLight(Vec3f pos, float cutoff, Vec3f dir, float exp){
 	float direction[3] = { dir[0], dir[1], dir[2] };
 	glLightfv(num, GL_DIFFUSE, color);
 	glLightfv(num, GL_AMBIENT, color);
-	glLightfv(num, GL_SPECULAR, no);
-	glLightf(num, GL_LINEAR_ATTENUATION, 0.1);
+	glLightfv(num, GL_SPECULAR, color);
+	glLightf(num, GL_CONSTANT_ATTENUATION, 1.0);
+	glLightf(num, GL_LINEAR_ATTENUATION, 0.01);
+	glLightf(num, GL_QUADRATIC_ATTENUATION, 0.001);
 	glLightf(num, GL_SPOT_CUTOFF, cutoff);
 	glLightfv(num, GL_SPOT_DIRECTION, direction);
 	glLightf(num, GL_SPOT_EXPONENT, exp);
@@ -86,6 +88,8 @@ void Light::rmLight(int index){
 	glDisable(num);
 	light_num.erase(light_num.begin() + index);
 	intensity.erase(intensity.begin() + index);
+	if (dir.find(num) != dir.end())
+		dir.erase(dir.find(num));
 	used.erase(used.find(num));
 	pLight.erase(pLight.begin() + index);
 }
@@ -103,6 +107,7 @@ void Light::openLight(int index){
 }
 
 void Light::addIntensity(int index, int channel){
+	if (light_num.size() == 0) return;
 	int num = light_num[index];
 	RGB &t = intensity[index];
 	switch (channel){
@@ -123,11 +128,12 @@ void Light::addIntensity(int index, int channel){
 	GLfloat no[4] = { 0, 0, 0, 1.0 };
 	glLightfv(num, GL_DIFFUSE, color);
 	glLightfv(num, GL_AMBIENT, color);
-	glLightfv(num, GL_SPECULAR, no);
+	glLightfv(num, GL_SPECULAR, color);
 	glEnable(num);
 }
 
 void Light::subIntensity(int index, int channel){
+	if (light_num.size() == 0) return;
 	int num = light_num[index];
 	RGB &t = intensity[index];
 	switch (channel){
@@ -148,7 +154,7 @@ void Light::subIntensity(int index, int channel){
 	GLfloat no[4] = { 0, 0, 0, 1.0 };
 	glLightfv(num, GL_DIFFUSE, color);
 	glLightfv(num, GL_AMBIENT, color);
-	glLightfv(num, GL_SPECULAR, no);
+	glLightfv(num, GL_SPECULAR, color);
 	glEnable(num);
 }
 
@@ -156,8 +162,6 @@ void Light::changeX(int index, float len){
 	int num = light_num[index];
 	Pos &t = pLight[index];
 	t.p[0] += len;
-	cout << t.p[0] << ' ' << t.p[1] << ' ' << t.p[2] << ' ' << t.p[3] << endl;
-	cout << num << endl;
 	//glEnable(num);
 }
 void Light::changeY(int index, float len){
@@ -221,4 +225,29 @@ void Light::setEmission(int index, float *emission){
 	glLightfv(num, GL_EMISSION, emission);
 }
 
+void Light::dirX(int index, float len){
+	if (light_num.size() == 0) return;
+	int num = light_num[index];
+	if (num < GL_LIGHT4) return;
+	dir[num][0] += len;
+	float direction[3] = { dir[num][0], dir[num][1], dir[num][2] };
+	glLightfv(num, GL_SPOT_DIRECTION, direction);
+}
 
+void Light::dirY(int index, float len){
+	if (light_num.size() == 0) return;
+	int num = light_num[index];
+	if (num < GL_LIGHT4) return;
+	dir[num][1] += len;
+	float direction[3] = { dir[num][0], dir[num][1], dir[num][2] };
+	glLightfv(num, GL_SPOT_DIRECTION, direction);
+}
+
+void Light::dirZ(int index, float len){
+	if (light_num.size() == 0) return;
+	int num = light_num[index];
+	if (num < GL_LIGHT4) return;
+	dir[num][2] += len;
+	float direction[3] = { dir[num][0], dir[num][1], dir[num][2] };
+	glLightfv(num, GL_SPOT_DIRECTION, direction);
+}

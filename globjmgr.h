@@ -24,6 +24,9 @@ public:
 		return currentId++;
 	}
 	void newId();
+	void subId(){
+		currentId--;
+	}
 
 	void removeById(int id);
 	void removeByIndex(int index);

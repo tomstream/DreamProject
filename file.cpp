@@ -89,6 +89,7 @@ bool SnapScreen(int width, int height, string fileName)
 	glReadPixels(0, 0, width, height, GL_BGR_EXT, GL_UNSIGNED_BYTE, image);
 	cv::Mat mat(height,width,CV_8UC3,image);
 	mat = rotate(mat,180, Point2f(width / 2, height/ 2));
+	cv::flip(mat, mat, 1);
 	cv::imwrite(fileName,mat);
 	free(image);
 	return true;

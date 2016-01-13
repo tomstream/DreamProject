@@ -1,4 +1,4 @@
-#ifndef __GLOBJECT_H__
+﻿#ifndef __GLOBJECT_H__
 #define __GLOBJECT_H__
 #include "vec.h"
 #include "loader.h"
@@ -32,11 +32,11 @@ struct sPoint{
 	sPoint(float f1, float f2, float f3)
 		:x(f1), y(f2), z(f3) {}
 };
-//????��???
+//Æ½Ãæ·½³Ì
 struct sPlaneEq{
 	float a, b, c, d;
 };
-//????
+//Æ½Ãæ
 struct sPlane{
 	int psize = 0;
 	int p[4];
@@ -71,9 +71,7 @@ struct glObject{
 	float t[3];
 	std::map<int, float*> materialFMap;
 
-	float* getMaterialfv(int para){
-		return materialFMap[para];
-	}
+	float* getMaterialfv(int para);
 	void setAmbient(float *ambient){
 		for (int i = 0; i < 4; ++i){
 			tex.ambient[i] = ambient[i];

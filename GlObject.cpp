@@ -1,4 +1,4 @@
-#include "globject.h"
+﻿#include "globject.h"
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -10,17 +10,25 @@ glObject::glObject(){
 		s[i] = 1.0;
 	}
 	hasTex = false;
-	materialFMap[GL_AMBIENT] = tex.ambient;
-	materialFMap[GL_DIFFUSE] = tex.diffuse;
-	materialFMap[GL_SPECULAR] = tex.specular;
-	materialFMap[GL_EMISSION] = tex.emission;
+	materialFMap[GL_AMBIENT] = this->tex.ambient;
+	materialFMap[GL_DIFFUSE] = this->tex.diffuse;
+	materialFMap[GL_SPECULAR] = this->tex.specular;
+	materialFMap[GL_EMISSION] = this->tex.emission;
+}
+
+float* glObject::getMaterialfv(int para){
+	if (para == GL_DIFFUSE)return tex.diffuse;
+	else if (para == GL_AMBIENT)return tex.ambient;
+	else if (para == GL_SPECULAR)return tex.specular;
+	else if (para == GL_EMISSION)return tex.emission;
+		return materialFMap[para];
 }
 
 void setConnectivity(glObject &o){
-	//����?��????????
+	//±éÀúÃ¿Ò»¸öÃæ
 	for (int i = 0; i < o.planeSize - 1; ++i){
 		for (int j = i + 1; j < o.planeSize; ++j){
-			//����?��????????
+			//±éÀúÃ¿Ò»¸öµã
 			for (int ki = 0; ki < 3; ++ki){
 				if (!o.planes[i].neighbor[ki])
 					for (int kj = 0; kj < 3; ++kj){
@@ -121,7 +129,7 @@ void castShadow(glObject &o, float *lp){
 	sPoint v1, v2;
 	float side;
 	for (int i = 0; i < o.planeSize; ++i){
-		//?????????????????????��
+		//¼ÆËã¹âÔ´Î»ÓÚÆ½ÃæÄÄÒ»²à
 		side = o.planes[i].PlaneEq.a * lp[0] +
 			o.planes[i].PlaneEq.b * lp[1] +
 			o.planes[i].PlaneEq.c * lp[2] +

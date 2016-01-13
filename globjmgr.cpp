@@ -135,19 +135,27 @@ glObject& GLObjectManager::getByIndex(int index){
 
 void GLObjectManager::setTexById(int id, int texId){
 	if (ids.find(id) == ids.end()) return;
-	setTexByIndex(ids[id], texId);
+	for (int i = 0; i < objs.size(); ++i)
+		if (objs[i].id == id)
+			setTexByIndex(i, texId);
 }
 void GLObjectManager::loadTexById(int id, const char* file){
 	if (ids.find(id) == ids.end()) return;
-	loadTexByIndex(ids[id], file);
+	for (int i = 0; i < objs.size(); ++i)
+		if (objs[i].id == id)
+			loadTexByIndex(i, file);
 }
 void GLObjectManager::openTexById(int id){
 	if (ids.find(id) == ids.end()) return;
-	objs[ids[id]].hasTex = true;
+	for (int i = 0; i < objs.size(); ++i)
+		if (objs[i].id == id)
+			objs[i].hasTex = true;
 }
 void GLObjectManager::closeTexById(int id){
 	if (ids.find(id) == ids.end()) return;
-	objs[ids[id]].hasTex = false;
+	for (int i = 0; i < objs.size(); ++i)
+		if (objs[i].id == id)
+			objs[i].hasTex = false;
 }
 
 
@@ -190,32 +198,29 @@ glObject& GLObjectManager::addObj(char *file){
 }
 
 void GLObjectManager::scale(int id, float *s){
-	int i = ids[id];
-	while (i < objs.size() && objs[i].id == id){
-		for (int j = 0; j < 3; ++j){
+	for (int i = 0; i < objs.size(); ++i){
+		if (objs[i].id == id)
+			for (int j = 0; j < 3; ++j){
 			objs[i].s[j] *= s[j];
-		}
-		++i;
+			}
 	}
 }
 
 void GLObjectManager::translate(int id, float *t){
-	int i = ids[id];
-	while (i < objs.size() && objs[i].id == id){
-		for (int j = 0; j < 3; ++j){
+	for (int i = 0; i < objs.size(); ++i){
+		if (objs[i].id == id)
+			for (int j = 0; j < 3; ++j){
 			objs[i].t[j] += t[j];
-		}
-		++i;
+			}
 	}
 }
 
 void GLObjectManager::rotate(int id, float *r){
-	int i = ids[id];
-	while (i < objs.size() && objs[i].id == id){
-		for (int j = 0; j < 3; ++j){
+	for (int i = 0; i < objs.size(); ++i){
+		if (objs[i].id == id)
+			for (int j = 0; j < 3; ++j){
 			objs[i].r[j] += r[j];
-		}
-		++i;
+			}
 	}
 }
 
