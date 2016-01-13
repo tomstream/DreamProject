@@ -24,8 +24,8 @@ cv::Mat frame;
 cv::Mat texttmp;
 
 static int selectedId = UNSELECTED;
-int wWidth = 0;
-int wHeight = 0;
+int wWidth = 640;
+int wHeight = 480;
 float whRatio;
 
 Light light;
@@ -155,8 +155,11 @@ void cvInit(){
 	glGenTextures(1, &cameratexid);
 }
 
+bool quitFlag;
+
 void capture_thread(){
 	while (1){
+		if (quitFlag == true)break;
 		mtx.lock();
 		cap >> frame;
 		cv::cvtColor(frame, texttmp, CV_BGR2RGB);
@@ -538,7 +541,7 @@ void key(unsigned char k, int x, int y)
 	switch (k)
 	{
 	case 27:
-	case 'q': {exit(0); break; }
+	case 'q': {quitFlag = true;; Sleep(1000); exit(0); break; }
 	case 'p': {bPersp = !bPersp; break; }
 
 	case ' ': {
@@ -1125,7 +1128,7 @@ void initGL(){
 void startApp(int argc, char **argv){
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH | GLUT_DOUBLE);
-	glutInitWindowSize(640, 480);
+	glutInitWindowSize(wWidth, wHeight);
 	glutInitWindowPosition(0, 0);
 	int windowHandle = glutCreateWindow("Simple GLUT App");
 	glutDisplayFunc(redraw);
