@@ -147,26 +147,25 @@ void cvInit(){
 	cap.set(CV_CAP_PROP_FRAME_HEIGHT, wHeight);
 	cameraWidth = wWidth;
 	cameraHeight = wHeight;
-	if (!cap.isOpened())
-	{
+	if (!cap.isOpened()){
 		cout << "Could not initialize capturing...\n";
 	}
-	//cv::namedWindow("Cap", 1);
 	glGenTextures(1, &cameratexid);
 }
 
 bool quitFlag;
 
+//摄像头捕捉线程
 void capture_thread(){
 	while (1){
 		if (quitFlag == true)break;
+		//关键代码段，防止两个线程同时读写
 		mtx.lock();
 		cap >> frame;
 		cv::cvtColor(frame, texttmp, CV_BGR2RGB);
 		cv::flip(texttmp, texttmp, 0);
 		cameraUpdate = true;
 		mtx.unlock();
-		//cv::imshow("Cap", frame);
 		cv::waitKey(200);
 	}
 }
@@ -438,11 +437,7 @@ void createItemMenu(){
 
 	menuid = glutCreateMenu(menu);
 	glutAddSubMenu("纹理", texture);
-
-
 	glutAddSubMenu("几何变换", transformation);
-
-
 	glutAddSubMenu("材料", material);
 	glutAddMenuEntry("移除", REMOVE);
 	glutAddMenuEntry("退出菜单", QUIT_MENU);
@@ -887,9 +882,9 @@ void draw_block(float x, float y, float z)
 
 void redraw()
 {
-
+	//关键代码段，防止同时读写
 	mtx.lock();
-	if (cameraUpdate){
+	if (cameraUpdate){//只有相机图片更新了才绑定，而无须每次都绑定
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, cameratexid);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);

@@ -83,13 +83,13 @@ bool SnapScreen(int width, int height, string fileName)
 		printf("Exception: No enough space!\n");
 		return false;
 	}
-	//像素格式设置4字节对齐
+	//像素格式设置对齐
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	//接收出像素的数据
 	glReadPixels(0, 0, width, height, GL_BGR_EXT, GL_UNSIGNED_BYTE, image);
 	cv::Mat mat(height,width,CV_8UC3,image);
-	mat = rotate(mat,180, Point2f(width / 2, height/ 2));
-	cv::flip(mat, mat, 1);
+	//由于opengl的窗口是左下角为原点，正常保存的图片是倒立的，因此要对x坐标做镜像操作
+	cv::flip(mat, mat, 0);
 	cv::imwrite(fileName,mat);
 	free(image);
 	return true;
